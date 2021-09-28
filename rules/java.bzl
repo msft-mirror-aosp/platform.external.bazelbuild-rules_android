@@ -14,7 +14,6 @@
 
 """Bazel Java APIs for the Android rules."""
 
-load(":acls.bzl", "acls")
 load(":path.bzl", _path = "path")
 load(":utils.bzl", "log")
 
@@ -169,29 +168,6 @@ def _invalid_java_package(custom_package, java_package):
         (not custom_package and _check_for_invalid_java_package(java_package))
     )
 
-def _set_default_applicationid(fqn, attrs):
-    """Sets the manifest value applicationId to the package.
-
-    If applicationId is missing from the manifest_values, set it
-    to the package as a default value to avoid using library packages
-    when merging manifests.
-    """
-    if not acls.in_fix_application_id(fqn):
-        return attrs
-    new_attrs = {}
-    new_attrs.update(attrs)
-    package_string = _resolve_package_from_label(Label(fqn), None)
-
-    # TODO(timpeut): handle select()s
-    mv_attr = attrs.get("manifest_values", None) or {}
-    if type(mv_attr) == "dict" and "applicationId" not in mv_attr:
-        manifest_values = {}
-        manifest_values.update(mv_attr)
-        manifest_values.update({"__INTERNAL_PKG_DO_NOT_USE__": package_string})
-        new_attrs["manifest_values"] = manifest_values
-
-    return new_attrs
-
 # The Android specific Java compile.
 def _compile_android(
         ctx,
@@ -227,8 +203,8 @@ def _compile_android(
       r_java: JavaInfo. The R.jar dependency. Optional.
       deps: sequence of JavaInfo providers. A list of dependencies. Optional.
       exports: sequence of JavaInfo providers. A list of exports. Optional.
-      plugins: sequence of JavaInfo providers. A list of plugins. Optional.
-      exported_plugins: sequence of JavaInfo providers. A list of exported
+      plugins: sequence of JavaPluginInfo providers. A list of plugins. Optional.
+      exported_plugins: sequence of JavaPluginInfo providers. A list of exported
         plugins. Optional.
       annotation_processor_additional_outputs: sequence of Files. A list of
         files produced by an annotation processor.
@@ -327,8 +303,8 @@ def _compile(
         Optional.
       deps: sequence of JavaInfo providers. A list of dependencies. Optional.
       exports: sequence of JavaInfo providers. A list of exports. Optional.
-      plugins: sequence of JavaInfo providers. A list of plugins. Optional.
-      exported_plugins: sequence of JavaInfo providers. A list of exported
+      plugins: sequence of JavaPluginInfo providers. A list of plugins. Optional.
+      exported_plugins: sequence of JavaPluginInfo providers. A list of exported
         plugins. Optional.
       annotation_processor_additional_outputs: sequence of Files. A list of
         files produced by an annotation processor.
@@ -406,6 +382,9 @@ def _singlejar(
         args.add("--sources")
         args.add_all(inputs)
 
+    args.use_param_file("@%s")
+    args.set_param_file_format("multiline")
+
     ctx.actions.run(
         executable = java_toolchain[java_common.JavaToolchainInfo].single_jar,
         arguments = [args],
@@ -469,7 +448,6 @@ java = struct(
     resolve_package = _resolve_package,
     resolve_package_from_label = _resolve_package_from_label,
     root = _root,
-    set_default_applicationid = _set_default_applicationid,
     invalid_java_package = _invalid_java_package,
     run = _run,
     singlejar = _singlejar,

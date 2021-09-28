@@ -248,7 +248,10 @@ def _create_import_deps_check(
     args = ctx.actions.args()
     args.add_all(jars_to_check, before_each = "--input")
     args.add_all(declared_deps, before_each = "--directdep")
-    args.add_all(transitive_deps, before_each = "--classpath_entry")
+    args.add_all(
+        depset(order = "preorder", transitive = [declared_deps, transitive_deps]),
+        before_each = "--classpath_entry",
+    )
     args.add_all(bootclasspath, before_each = "--bootclasspath_entry")
     args.add("--checking_mode=error")
     args.add("--jdeps_output", jdeps_output)

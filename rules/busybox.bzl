@@ -191,6 +191,7 @@ def _package(
         resource_configs = None,
         densities = [],
         application_id = None,
+        package_id = None,
         direct_resources_nodes = [],
         transitive_resources_nodes = [],
         transitive_manifests = [],
@@ -233,6 +234,11 @@ def _package(
       densities: A list of strings. The list of screen densities to filter for when
         building the apk.
       application_id: An optional string. The applicationId set in manifest values.
+      package_id: An optional integer in [2,255]. This is the prefix byte for
+        all generated resource IDs, defaults to 0x7F (127). 1 is reserved by the
+        framework, and some builds are known to crash when given IDs > 127.
+        Shared libraries are also assigned monotonically increasing IDs in
+        [2,126], so care should be taken that there is room at the lower end.
       direct_resources_nodes: Depset of ResourcesNodeInfo providers. The set of
         ResourcesNodeInfo from direct dependencies.
       transitive_resources_nodes: Depset of ResourcesNodeInfo providers. The set
@@ -356,6 +362,8 @@ def _package(
         args.add_joined("--densities", _extract_filters(densities), join_with = ",")
     if application_id:
         args.add("--applicationId", application_id)
+    if package_id:
+        args.add("--packageId", package_id)
     if additional_apks_to_link_against:
         args.add_joined(
             "--additionalApksToLinkAgainst",
@@ -933,6 +941,7 @@ def _generate_binary_r(
     # TODO(b/154003916): support transitive "--library transitive_r_txt_path,transitive_manifest_path" flags
     args.add("--classJarOutput", out_class_jar)
     args.add("--targetLabel", str(ctx.label))
+    args.use_param_file("@%s")
 
     _java.run(
         ctx = ctx,

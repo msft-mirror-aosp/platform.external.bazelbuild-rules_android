@@ -20,7 +20,7 @@ load(
 )
 load(
     "//rules/android_application:android_application.bzl",
-     _android_application = "android_application"
+    _android_application = "android_application",
 )
 load(
     ":android_binary.bzl",

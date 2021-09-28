@@ -15,7 +15,7 @@
 """Access Control Lists.
 
 To create a new list:
-  1. Create new .bzl file in this directory with a list of targets.
+  1. Create new .bzl file in the acls directory with a list of targets.
   2. Create matching method in this file.
   3. Add matching method to struct.
 
@@ -42,13 +42,14 @@ load("@rules_android//rules/acls:android_instrumentation_binary_starlark_resourc
 load("@rules_android//rules/acls:android_feature_splits_dogfood.bzl", "ANDROID_FEATURE_SPLITS_DOGFOOD")
 load("@rules_android//rules/acls:android_library_implicit_exports.bzl", "ANDROID_LIBRARY_IMPLICIT_EXPORTS", "ANDROID_LIBRARY_IMPLICIT_EXPORTS_GENERATOR_FUNCTIONS")
 load("@rules_android//rules/acls:android_library_resources_without_srcs.bzl", "ANDROID_LIBRARY_RESOURCES_WITHOUT_SRCS", "ANDROID_LIBRARY_RESOURCES_WITHOUT_SRCS_GENERATOR_FUNCTIONS")
+load("@rules_android//rules/acls:android_library_starlark_resource_outputs.bzl", "ANDROID_LIBRARY_STARLARK_RESOURCE_OUTPUTS_FALLBACK", "ANDROID_LIBRARY_STARLARK_RESOURCE_OUTPUTS_ROLLOUT")
 load("@rules_android//rules/acls:android_lint_checks_rollout.bzl", "ANDROID_LINT_CHECKS_FALLBACK", "ANDROID_LINT_CHECKS_ROLLOUT")
 load("@rules_android//rules/acls:android_lint_rollout.bzl", "ANDROID_LINT_FALLBACK", "ANDROID_LINT_ROLLOUT")
+load("@rules_android//rules/acls:lint_registry_rollout.bzl", "LINT_REGISTRY_FALLBACK", "LINT_REGISTRY_ROLLOUT")
 load("@rules_android//rules/acls:android_build_stamping_rollout.bzl", "ANDROID_BUILD_STAMPING_FALLBACK", "ANDROID_BUILD_STAMPING_ROLLOUT")
 load("@rules_android//rules/acls:b122039567.bzl", "B122039567")
 load("@rules_android//rules/acls:b123854163.bzl", "B123854163")
 load("@rules_android//rules/acls:dex2oat_opts.bzl", "CAN_USE_DEX2OAT_OPTIONS")
-load("@rules_android//rules/acls:fix_application_id.bzl", "FIX_APPLICATION_ID_FALLBACK", "FIX_APPLICATION_ID_ROLLOUT")
 load("@rules_android//rules/acls:fix_export_exporting_rollout.bzl", "FIX_EXPORT_EXPORTING_FALLBACK", "FIX_EXPORT_EXPORTING_ROLLOUT")
 load("@rules_android//rules/acls:fix_resource_transitivity_rollout.bzl", "FIX_RESOURCE_TRANSITIVITY_FALLBACK", "FIX_RESOURCE_TRANSITIVITY_ROLLOUT")
 load("@rules_android//rules/acls:host_dex2oat_rollout.bzl", "AIT_USE_HOST_DEX2OAT_ROLLOUT", "AIT_USE_HOST_DEX2OAT_ROLLOUT_FALLBACK")
@@ -65,6 +66,7 @@ load(
     "PARTIAL_JETIFICATION_TARGETS_ROLLOUT",
 )
 load("@rules_android//rules/acls:kt_android_library_rollout.bzl", "KT_ANDROID_LIBRARY_FALLBACK", "KT_ANDROID_LIBRARY_ROLLOUT")
+load("@rules_android//rules/acls:android_instrumentation_test_manifest_check_rollout.bzl", "ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_FALLBACK", "ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_ROLLOUT")
 
 def _in_aar_import_deps_checker(fqn):
     return not _matches(fqn, AAR_IMPORT_DEPS_CHECKER_FALLBACK_DICT) and _matches(fqn, AAR_IMPORT_DEPS_CHECKER_ROLLOUT_DICT)
@@ -102,6 +104,9 @@ def _in_android_lint_checks_rollout(fqn):
 def _in_android_lint_rollout(fqn):
     return not _matches(fqn, ANDROID_LINT_FALLBACK_DICT) and _matches(fqn, ANDROID_LINT_ROLLOUT_DICT)
 
+def _in_lint_registry_rollout(fqn):
+    return not _matches(fqn, LINT_REGISTRY_FALLBACK_DICT) and _matches(fqn, LINT_REGISTRY_ROLLOUT_DICT)
+
 def _in_android_build_stamping_rollout(fqn):
     return not _matches(fqn, ANDROID_BUILD_STAMPING_FALLBACK_DICT) and _matches(fqn, ANDROID_BUILD_STAMPING_ROLLOUT_DICT)
 
@@ -128,14 +133,14 @@ def _in_android_library_resources_without_srcs(fqn):
 def _in_android_library_resources_without_srcs_generator_functions(gfn):
     return gfn in ANDROID_LIBRARY_RESOURCES_WITHOUT_SRCS_GENERATOR_FUNCTIONS_DICT
 
+def _in_android_library_starlark_resource_outputs_rollout(fqn):
+    return not _matches(fqn, ANDROID_LIBRARY_STARLARK_RESOURCE_OUTPUTS_FALLBACK_DICT) and _matches(fqn, ANDROID_LIBRARY_STARLARK_RESOURCE_OUTPUTS_ROLLOUT_DICT)
+
 def _in_app_installation_snapshot(fqn):
     return not _matches(fqn, APP_INSTALLATION_SNAPSHOT_FALLBACK_DICT) and _matches(fqn, APP_INSTALLATION_SNAPSHOT_DICT)
 
 def _in_dex2oat_opts(fqn):
     return _matches(fqn, CAN_USE_DEX2OAT_OPTIONS_DICT)
-
-def _in_fix_application_id(fqn):
-    return not _matches(fqn, FIX_APPLICATION_ID_FALLBACK_DICT) and _matches(fqn, FIX_APPLICATION_ID_ROLLOUT_DICT)
 
 def _in_fix_export_exporting_rollout(fqn):
     return not _matches(fqn, FIX_EXPORT_EXPORTING_FALLBACK_DICT) and _matches(fqn, FIX_EXPORT_EXPORTING_ROLLOUT_DICT)
@@ -176,6 +181,9 @@ def _in_partial_jetification_targets(fqn):
 def _in_kt_android_library_rollout(fqn):
     return not _matches(fqn, KT_ANDROID_LIBRARY_FALLBACK_DICT) and _matches(fqn, KT_ANDROID_LIBRARY_ROLLOUT_DICT)
 
+def _in_android_instrumentation_test_manifest_check_rollout(fqn):
+    return not _matches(fqn, ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_FALLBACK_DICT) and _matches(fqn, ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_ROLLOUT_DICT)
+
 def _make_dict(lst):
     """Do not use this method outside of this file."""
     return {t: True for t in lst}
@@ -199,10 +207,14 @@ ANDROID_LIBRARY_IMPLICIT_EXPORTS_DICT = _make_dict(ANDROID_LIBRARY_IMPLICIT_EXPO
 ANDROID_LIBRARY_IMPLICIT_EXPORTS_GENERATOR_FUNCTIONS_DICT = _make_dict(ANDROID_LIBRARY_IMPLICIT_EXPORTS_GENERATOR_FUNCTIONS)
 ANDROID_LIBRARY_RESOURCES_WITHOUT_SRCS_DICT = _make_dict(ANDROID_LIBRARY_RESOURCES_WITHOUT_SRCS)
 ANDROID_LIBRARY_RESOURCES_WITHOUT_SRCS_GENERATOR_FUNCTIONS_DICT = _make_dict(ANDROID_LIBRARY_RESOURCES_WITHOUT_SRCS_GENERATOR_FUNCTIONS)
+ANDROID_LIBRARY_STARLARK_RESOURCE_OUTPUTS_FALLBACK_DICT = _make_dict(ANDROID_LIBRARY_STARLARK_RESOURCE_OUTPUTS_FALLBACK)
+ANDROID_LIBRARY_STARLARK_RESOURCE_OUTPUTS_ROLLOUT_DICT = _make_dict(ANDROID_LIBRARY_STARLARK_RESOURCE_OUTPUTS_ROLLOUT)
 ANDROID_LINT_CHECKS_FALLBACK_DICT = _make_dict(ANDROID_LINT_CHECKS_FALLBACK)
 ANDROID_LINT_CHECKS_ROLLOUT_DICT = _make_dict(ANDROID_LINT_CHECKS_ROLLOUT)
 ANDROID_LINT_FALLBACK_DICT = _make_dict(ANDROID_LINT_FALLBACK)
 ANDROID_LINT_ROLLOUT_DICT = _make_dict(ANDROID_LINT_ROLLOUT)
+LINT_REGISTRY_FALLBACK_DICT = _make_dict(LINT_REGISTRY_FALLBACK)
+LINT_REGISTRY_ROLLOUT_DICT = _make_dict(LINT_REGISTRY_ROLLOUT)
 ANDROID_BUILD_STAMPING_ROLLOUT_DICT = _make_dict(ANDROID_BUILD_STAMPING_ROLLOUT)
 ANDROID_BUILD_STAMPING_FALLBACK_DICT = _make_dict(ANDROID_BUILD_STAMPING_FALLBACK)
 ANDROID_TEST_LOCKDOWN_GENERATOR_FUNCTIONS_DICT = _make_dict(ANDROID_TEST_LOCKDOWN_GENERATOR_FUNCTIONS)
@@ -212,8 +224,6 @@ APP_INSTALLATION_SNAPSHOT_FALLBACK_DICT = _make_dict(APP_INSTALLATION_SNAPSHOT_F
 B122039567_DICT = _make_dict(B122039567)
 B123854163_DICT = _make_dict(B123854163)
 CAN_USE_DEX2OAT_OPTIONS_DICT = _make_dict(CAN_USE_DEX2OAT_OPTIONS)
-FIX_APPLICATION_ID_FALLBACK_DICT = _make_dict(FIX_APPLICATION_ID_FALLBACK)
-FIX_APPLICATION_ID_ROLLOUT_DICT = _make_dict(FIX_APPLICATION_ID_ROLLOUT)
 FIX_RESOURCE_TRANSIVITY_FALLBACK_DICT = _make_dict(FIX_RESOURCE_TRANSITIVITY_FALLBACK)
 FIX_RESOURCE_TRANSIVITY_ROLLOUT_DICT = _make_dict(FIX_RESOURCE_TRANSITIVITY_ROLLOUT)
 FIX_EXPORT_EXPORTING_FALLBACK_DICT = _make_dict(FIX_EXPORT_EXPORTING_FALLBACK)
@@ -237,6 +247,8 @@ PARTIAL_JETIFICATION_TARGETS_ROLLOUT_DICT = _make_dict(PARTIAL_JETIFICATION_TARG
 PARTIAL_JETIFICATION_TARGETS_FALLBACK_DICT = _make_dict(PARTIAL_JETIFICATION_TARGETS_FALLBACK)
 KT_ANDROID_LIBRARY_ROLLOUT_DICT = _make_dict(KT_ANDROID_LIBRARY_ROLLOUT)
 KT_ANDROID_LIBRARY_FALLBACK_DICT = _make_dict(KT_ANDROID_LIBRARY_FALLBACK)
+ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_ROLLOUT_DICT = _make_dict(ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_ROLLOUT)
+ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_FALLBACK_DICT = _make_dict(ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_FALLBACK)
 
 def _matches(fqn, dct):
     # Labels with workspace names ("@workspace//pkg:target") are not supported.
@@ -288,15 +300,16 @@ acls = struct(
     in_android_feature_splits_dogfood = _in_android_feature_splits_dogfood,
     in_android_library_implicit_exports = _in_android_library_implicit_exports,
     in_android_library_implicit_exports_generator_functions = _in_android_library_implicit_exports_generator_functions,
+    in_android_library_starlark_resource_outputs_rollout = _in_android_library_starlark_resource_outputs_rollout,
     in_android_library_resources_without_srcs = _in_android_library_resources_without_srcs,
     in_android_library_resources_without_srcs_generator_functions = _in_android_library_resources_without_srcs_generator_functions,
     in_android_lint_checks_rollout = _in_android_lint_checks_rollout,
     in_android_lint_rollout = _in_android_lint_rollout,
+    in_lint_registry_rollout = _in_lint_registry_rollout,
     in_android_build_stamping_rollout = _in_android_build_stamping_rollout,
     in_android_test_lockdown_allowlist = _in_android_test_lockdown_allowlist,
     in_app_installation_snapshot = _in_app_installation_snapshot,
     in_dex2oat_opts = _in_dex2oat_opts,
-    in_fix_application_id = _in_fix_application_id,
     in_fix_export_exporting_rollout = _in_fix_export_exporting_rollout,
     in_fix_resource_transivity_rollout = _in_fix_resource_transivity_rollout,
     in_host_dex2oat_rollout = _in_host_dex2oat_rollout,
@@ -310,6 +323,7 @@ acls = struct(
     in_allow_resource_conflicts = _in_allow_resource_conflicts,
     in_partial_jetification_targets = _in_partial_jetification_targets,
     in_kt_android_library_rollout = _in_kt_android_library_rollout,
+    in_android_instrumentation_test_manifest_check_rollout = _in_android_instrumentation_test_manifest_check_rollout,
 )
 
 # Visible for testing

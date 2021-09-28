@@ -420,6 +420,7 @@ def _package(
         resource_files = [],
         nocompress_extensions = [],
         java_package = None,
+        package_id = None,
         compilation_mode = _compilation_mode.FASTBUILD,
         shrink_resources = None,
         use_android_resource_shrinking = None,
@@ -460,6 +461,11 @@ def _package(
       java_package: String. Java package for which java sources will be
         generated. By default the package is inferred from the directory where
         the BUILD file containing the rule is.
+      package_id: An optional integer in [2,255]. This is the prefix byte for
+        all generated resource IDs, defaults to 0x7F (127). 1 is reserved by the
+        framework, and some builds are known to crash when given IDs > 127.
+        Shared libraries are also assigned monotonically increasing IDs in
+        [2,126], so care should be taken that there is room at the lower end.
       compilation_mode: String. A string that represents compilation mode. The
         list of expected values are as follows: dbg, fastbuild, opt.
       shrink_resources: Tristate. Whether resource shrinking is enabled by the rule.
@@ -579,7 +585,7 @@ def _package(
     processed_resources = resource_files
     data_binding_layout_info = None
     if enable_data_binding:
-        data_binding_layout_info = ctx.actions.declare_file("_migrated/databinding/" + ctx.label.name + "/layout-info.zip")
+        data_binding_layout_info = ctx.actions.declare_file("_migrated/" + ctx.label.name + "/layout-info.zip")
         processed_resources, resources_dirname = _make_databinding_outputs(
             ctx,
             resource_files,
@@ -620,6 +626,7 @@ def _package(
         out_main_dex_proguard_cfg = main_dex_proguard_cfg,
         out_resource_files_zip = resource_files_zip,
         application_id = manifest_values.get("applicationId", None),
+        package_id = package_id,
         manifest = merged_manifest,
         assets = assets,
         assets_dir = assets_dir,

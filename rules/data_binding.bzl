@@ -220,7 +220,7 @@ def _process(
         ]
         return struct(**db_info)
 
-    output_dir = "_migrated/databinding/%s/" % ctx.label.name
+    output_dir = "databinding/%s/" % ctx.label.name
 
     db_info[_JAVA_SRCS].append(_copy_annotation_file(
         ctx,
