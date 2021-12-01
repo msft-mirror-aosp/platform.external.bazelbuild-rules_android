@@ -12,20 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Workspace setup macro for rules_android."""
+"""Rollout list for enabling test class derivation in android_instrumentation_test,"""
 
-load("@rules_jvm_external//:defs.bzl", "maven_install")
+ANDROID_INSTRUMENTATION_TEST_DERIVED_TEST_CLASS_ROLLOUT = [
+    "//:__subpackages__",
+]
 
-def rules_android_workspace():
-    """ Sets up workspace dependencies for rules_android."""
-
-    maven_install(
-        name = "rules_android_maven",
-        artifacts = [
-            "com.android.tools.build:bundletool:1.6.1",
-        ],
-        repositories = [
-            "https://maven.google.com",
-            "https://repo1.maven.org/maven2",
-        ],
-    )
+ANDROID_INSTRUMENTATION_TEST_DERIVED_TEST_CLASS_FALLBACK = [
+    "//javatests/notinacl:__subpackages__",
+]
