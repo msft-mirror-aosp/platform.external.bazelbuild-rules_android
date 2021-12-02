@@ -12,20 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Workspace setup macro for rules_android."""
+"""Allow list for the Android Lint Registry target."""
 
-load("@rules_jvm_external//:defs.bzl", "maven_install")
+# keep sorted
+LINT_REGISTRY_ROLLOUT = [
+]
 
-def rules_android_workspace():
-    """ Sets up workspace dependencies for rules_android."""
-
-    maven_install(
-        name = "rules_android_maven",
-        artifacts = [
-            "com.android.tools.build:bundletool:1.6.1",
-        ],
-        repositories = [
-            "https://maven.google.com",
-            "https://repo1.maven.org/maven2",
-        ],
-    )
+LINT_REGISTRY_FALLBACK = []
