@@ -16,6 +16,16 @@
 
 load(":java.bzl", _java = "java")
 
+_density_mapping = {
+    "ldpi": 120,
+    "mdpi": 160,
+    "hdpi": 240,
+    "xhdpi": 320,
+    "xxhdpi": 480,
+    "xxxhdpi": 640,
+    "tvdpi": 213,
+}
+
 def _proto_apk_to_module(
         ctx,
         out = None,
@@ -72,7 +82,7 @@ if [ $UNKNOWN != 0 ]; then
 fi
 
 cd "${OUT_DIR}"
-"${CUR_PWD}/${ZIP}" "${CUR_PWD}/${OUTPUT}" -Drqq .
+"${CUR_PWD}/${ZIP}" "${CUR_PWD}/${OUTPUT}" -Drq0 .
 """ % (
             unzip.executable.path,
             zip.executable.path,
@@ -182,8 +192,71 @@ echo "$contents" > %s
         command = cmd,
     )
 
+def _bundle_to_apks(
+        ctx,
+        out = None,
+        bundle = None,
+        universal = False,
+        device_spec = None,
+        keystore = None,
+        modules = None,
+        aapt2 = None,
+        bundletool = None,
+        host_javabase = None):
+    inputs = [bundle]
+    args = ctx.actions.args()
+    args.add("build-apks")
+    args.add("--output", out)
+    args.add("--bundle", bundle)
+    args.add("--aapt2", aapt2.executable.path)
+
+    if universal:
+        args.add("--mode=universal")
+
+    if keystore:
+        args.add("--ks", keystore.path)
+        args.add("--ks-pass", "pass:android")
+        args.add("--ks-key-alias", "AndroidDebugKey")
+        inputs.append(keystore)
+
+    if device_spec:
+        args.add("--device-spec", device_spec)
+        inputs.append(device_spec)
+
+    if modules:
+        args.add_joined("--modules", modules, join_with = ",")
+
+    _java.run(
+        ctx = ctx,
+        host_javabase = host_javabase,
+        executable = bundletool,
+        arguments = [args],
+        inputs = inputs,
+        outputs = [out],
+        tools = [aapt2],
+        mnemonic = "BundleToApks",
+        progress_message = "Converting bundle to .apks: %s" % out.short_path,
+    )
+
+def _build_device_json(
+        ctx,
+        out,
+        abis,
+        locales,
+        density,
+        sdk_version):
+    json_content = json.encode(struct(
+        supportedAbis = abis,
+        supportedLocales = locales,
+        screenDensity = _density_mapping[density],
+        sdkVersion = int(sdk_version),
+    ))
+    ctx.actions.write(out, json_content)
+
 bundletool = struct(
     build = _build,
+    build_device_json = _build_device_json,
+    bundle_to_apks = _bundle_to_apks,
     extract_config = _extract_config,
     extract_manifest = _extract_manifest,
     proto_apk_to_module = _proto_apk_to_module,

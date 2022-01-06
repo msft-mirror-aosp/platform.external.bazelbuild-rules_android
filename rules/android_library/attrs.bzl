@@ -66,6 +66,7 @@ ATTRS = _attrs.add(
         _flags = attr.label(
             default = "@rules_android//rules/flags",
         ),
+        _package_name = attr.string(),  # for sending the package name to the outputs callback
     ),
     _attrs.COMPILATION,
     _attrs.DATA_CONTEXT,
