@@ -12,8 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Packages able to use deprecated Android feature splits features."""
+"""Allowlist for packages able to use Android feature splits.
+
+Dynamic feature splits are still in development and at this stage are only suitable for use
+in an experimental capacity.
+"""
 
 # keep sorted
 ANDROID_FEATURE_SPLITS_DOGFOOD = [
+    "//:__subpackages__",
 ]
