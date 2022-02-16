@@ -1,8 +1,15 @@
-# The android_binary_internal rule.
+# Starlark Resource Packaging for Android Rules.
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
+package(
+    default_visibility =
+        ["//third_party/bazel_rules/rules_android"],
+)
+
 licenses(["notice"])
+
+exports_files(["rule.bzl"])
 
 filegroup(
     name = "all_files",
