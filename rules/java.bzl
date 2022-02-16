@@ -88,7 +88,8 @@ def _resolve_package(path):
 
 def _resolve_package_from_label(
         label,
-        custom_package = None):
+        custom_package = None,
+        fallback = True):
     """Resolves the Java package from a Label.
 
     When no legal Java package can be resolved from the label, None will be
@@ -109,7 +110,15 @@ def _resolve_package_from_label(
         [label.package] +
         _path.split(label.name)[:-1],
     )
-    return _resolve_package(label_path)
+    java_package = _resolve_package(label_path)
+
+    if java_package != None:  # "" is a valid result.
+        return java_package
+
+    if fallback:
+        return label.package.replace("/", ".")
+
+    return None
 
 def _root(path):
     """Determines the Java root from the given path.
@@ -194,8 +203,8 @@ def _compile_android(
       r_java: JavaInfo. The R.jar dependency. Optional.
       deps: sequence of JavaInfo providers. A list of dependencies. Optional.
       exports: sequence of JavaInfo providers. A list of exports. Optional.
-      plugins: sequence of JavaPluginInfo providers. A list of plugins. Optional.
-      exported_plugins: sequence of JavaPluginInfo providers. A list of exported
+      plugins: sequence of JavaInfo providers. A list of plugins. Optional.
+      exported_plugins: sequence of JavaInfo providers. A list of exported
         plugins. Optional.
       annotation_processor_additional_outputs: sequence of Files. A list of
         files produced by an annotation processor.
@@ -210,6 +219,7 @@ def _compile_android(
         see https://docs.bazel.build/versions/master/user-manual.html#flag--strict_java_deps.
         By default 'ERROR'.
       java_toolchain: The java_toolchain Target.
+      host_javabase: The host_javabase Target.
 
     Returns:
       A JavaInfo provider representing the Java compilation.
@@ -294,8 +304,8 @@ def _compile(
         Optional.
       deps: sequence of JavaInfo providers. A list of dependencies. Optional.
       exports: sequence of JavaInfo providers. A list of exports. Optional.
-      plugins: sequence of JavaPluginInfo providers. A list of plugins. Optional.
-      exported_plugins: sequence of JavaPluginInfo providers. A list of exported
+      plugins: sequence of JavaInfo providers. A list of plugins. Optional.
+      exported_plugins: sequence of JavaInfo providers. A list of exported
         plugins. Optional.
       annotation_processor_additional_outputs: sequence of Files. A list of
         files produced by an annotation processor.
@@ -311,6 +321,7 @@ def _compile(
         see https://docs.bazel.build/versions/master/user-manual.html#flag--strict_java_deps.
         By default 'ERROR'.
       java_toolchain: The java_toolchain Target.
+      host_javabase: The host_javabase Target.
 
     Returns:
       A JavaInfo provider representing the Java compilation.
@@ -373,11 +384,8 @@ def _singlejar(
         args.add("--sources")
         args.add_all(inputs)
 
-    args.use_param_file("@%s")
-    args.set_param_file_format("multiline")
-
     ctx.actions.run(
-        executable = java_toolchain[java_common.JavaToolchainInfo].single_jar,
+        executable = java_toolchain.java_toolchain.single_jar,
         arguments = [args],
         inputs = inputs,
         outputs = [output],
@@ -388,14 +396,12 @@ def _singlejar(
 def _run(
         ctx,
         host_javabase,
-        jvm_flags = [],
         **args):
     """Run a java binary
 
     Args:
       ctx: The context.
       host_javabase: Target. The host_javabase.
-      jvm_flags: Additional arguments to the JVM itself.
       **args: Additional arguments to pass to ctx.actions.run(). Some will get modified.
     """
 
@@ -404,10 +410,6 @@ def _run(
 
     if type(host_javabase) != "Target":
         fail("Expected type Target for argument host_javabase, got %s" % type(host_javabase))
-
-    # Set reasonable max heap default. Required to prevent runaway memory usage.
-    # Can still be overridden by callers of this method.
-    jvm_flags = ["-Xmx4G", "-XX:+ExitOnOutOfMemoryError"] + jvm_flags
 
     # executable should be a File or a FilesToRunProvider
     jar = args.get("executable")
@@ -429,7 +431,7 @@ def _run(
     jar_args = ctx.actions.args()
     jar_args.add("-jar", jar)
 
-    args["arguments"] = jvm_flags + [jar_args] + args.get("arguments", default = [])
+    args["arguments"] = [jar_args] + args.get("arguments", default = [])
 
     ctx.actions.run(**args)
 
