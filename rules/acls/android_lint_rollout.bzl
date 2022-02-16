@@ -17,5 +17,3 @@
 # keep sorted
 ANDROID_LINT_ROLLOUT = [
 ]
-
-ANDROID_LINT_FALLBACK = []
