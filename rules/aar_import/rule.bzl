@@ -21,11 +21,6 @@ aar_import = rule(
     attrs = _ATTRS,
     fragments = ["android"],
     implementation = _impl,
-    provides = [
-        AndroidIdeInfo,
-        AndroidLibraryResourceClassJarProvider,
-        AndroidNativeLibsInfo,
-        JavaInfo,
-    ],
+    provides = [AndroidNativeLibsInfo, JavaInfo],
     toolchains = ["@rules_android//toolchains/android:toolchain_type"],
 )
