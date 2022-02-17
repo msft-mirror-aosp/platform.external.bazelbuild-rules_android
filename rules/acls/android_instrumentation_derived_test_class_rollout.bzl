@@ -1,4 +1,4 @@
-# Copyright 2018 The Bazel Authors. All rights reserved.
+# Copyright 2021 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,20 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""aar_import rule."""
+"""Rollout list for enabling test class derivation in android_instrumentation_test,"""
 
-load(":attrs.bzl", _ATTRS = "ATTRS")
-load(":impl.bzl", _impl = "impl")
+ANDROID_INSTRUMENTATION_TEST_DERIVED_TEST_CLASS_ROLLOUT = [
+    "//:__subpackages__",
+]
 
-aar_import = rule(
-    attrs = _ATTRS,
-    fragments = ["android"],
-    implementation = _impl,
-    provides = [
-        AndroidIdeInfo,
-        AndroidLibraryResourceClassJarProvider,
-        AndroidNativeLibsInfo,
-        JavaInfo,
-    ],
-    toolchains = ["@rules_android//toolchains/android:toolchain_type"],
-)
+ANDROID_INSTRUMENTATION_TEST_DERIVED_TEST_CLASS_FALLBACK = [
+    "//javatests/notinacl:__subpackages__",
+]
