@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Rollout list for enabling manifest validation in android_instrumentation_test."""
+"""Allowlist for fixing the implicit application ID in manifest processing.
 
-ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_ROLLOUT = [
+See b/111923269 for context.
+"""
+
+# keep sorted
+FIX_APPLICATION_ID_ROLLOUT = [
     "//:__subpackages__",
 ]
 
-ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_FALLBACK = [
+# keep sorted
+FIX_APPLICATION_ID_FALLBACK = [
 ]
