@@ -31,7 +31,7 @@ def define_flags():
 
     flags.DEFINE_int(
         name = "num_dex_shards",
-        default = 32,
+        default = 16,
         description = "Number of dex shards to use for mobile-install.",
     )
 
@@ -64,7 +64,7 @@ def define_flags():
 
     flags.DEFINE_bool(
         name = "enable_splits",
-        default = True,
+        default = False,
         description = "Build and install split apks if the device supports them.",
     )
 
@@ -85,7 +85,6 @@ def define_flags():
         default = False,
         description = "",
     )
-
 
     flags.EXPOSE_native_bool(
         name = "stamp",
