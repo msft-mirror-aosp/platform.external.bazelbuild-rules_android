@@ -191,7 +191,6 @@ def _package(
         resource_configs = None,
         densities = [],
         application_id = None,
-        package_id = None,
         direct_resources_nodes = [],
         transitive_resources_nodes = [],
         transitive_manifests = [],
@@ -234,11 +233,6 @@ def _package(
       densities: A list of strings. The list of screen densities to filter for when
         building the apk.
       application_id: An optional string. The applicationId set in manifest values.
-      package_id: An optional integer in [2,255]. This is the prefix byte for
-        all generated resource IDs, defaults to 0x7F (127). 1 is reserved by the
-        framework, and some builds are known to crash when given IDs > 127.
-        Shared libraries are also assigned monotonically increasing IDs in
-        [2,126], so care should be taken that there is room at the lower end.
       direct_resources_nodes: Depset of ResourcesNodeInfo providers. The set of
         ResourcesNodeInfo from direct dependencies.
       transitive_resources_nodes: Depset of ResourcesNodeInfo providers. The set
@@ -362,8 +356,6 @@ def _package(
         args.add_joined("--densities", _extract_filters(densities), join_with = ",")
     if application_id:
         args.add("--applicationId", application_id)
-    if package_id:
-        args.add("--packageId", package_id)
     if additional_apks_to_link_against:
         args.add_joined(
             "--additionalApksToLinkAgainst",
@@ -380,8 +372,7 @@ def _package(
         args.add("--versionName", version_name)
     if version_code:
         args.add("--versionCode", version_code)
-    if java_package:
-        args.add("--packageForR", java_package)
+    args.add("--packageForR", java_package)
 
     _java.run(
         ctx = ctx,
@@ -801,7 +792,7 @@ def _merge_manifests(
         fail("Unexpected manifest merge type: " + merge_type)
 
     outputs = [out_file]
-    directs = [manifest] if manifest else []
+    directs = [manifest]
     transitives = [mergee_manifests]
 
     # Args for busybox
@@ -809,8 +800,7 @@ def _merge_manifests(
     args.use_param_file("@%s", use_always = True)
     args.add("--tool", "MERGE_MANIFEST")
     args.add("--")
-    if manifest:
-        args.add("--manifest", manifest)
+    args.add("--manifest", manifest)
     args.add_all(
         "--mergeeManifests",
         [mergee_manifests],
@@ -822,8 +812,7 @@ def _merge_manifests(
             ",".join(["%s:%s" % (_escape_mv(k), _escape_mv(v)) for k, v in manifest_values.items()]),
         )
     args.add("--mergeType", merge_type)
-    if java_package:
-        args.add("--customPackage", java_package)
+    args.add("--customPackage", java_package)
     args.add("--manifestOutput", out_file)
     if out_log_file:
         args.add("--log", out_log_file)
@@ -930,8 +919,7 @@ def _generate_binary_r(
     args.add("--")
     args.add("--primaryRTxt", r_txt)
     args.add("--primaryManifest", manifest)
-    if package_for_r:
-        args.add("--packageForR", package_for_r)
+    args.add("--packageForR", package_for_r)
     args.add_all(
         resources_nodes,
         map_each = _make_generate_binay_r_flags,
@@ -945,7 +933,6 @@ def _generate_binary_r(
     # TODO(b/154003916): support transitive "--library transitive_r_txt_path,transitive_manifest_path" flags
     args.add("--classJarOutput", out_class_jar)
     args.add("--targetLabel", str(ctx.label))
-    args.use_param_file("@%s")
 
     _java.run(
         ctx = ctx,
