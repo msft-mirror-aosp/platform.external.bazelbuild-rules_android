@@ -1,4 +1,4 @@
-# Copyright 2018 The Bazel Authors. All rights reserved.
+# Copyright 2021 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""aar_import rule."""
+"""Workspace setup macro for rules_android."""
 
-load(":attrs.bzl", _ATTRS = "ATTRS")
-load(":impl.bzl", _impl = "impl")
+load("@rules_jvm_external//:defs.bzl", "maven_install")
 
-aar_import = rule(
-    attrs = _ATTRS,
-    fragments = ["android"],
-    implementation = _impl,
-    provides = [
-        AndroidIdeInfo,
-        AndroidLibraryResourceClassJarProvider,
-        AndroidNativeLibsInfo,
-        JavaInfo,
-    ],
-    toolchains = ["@rules_android//toolchains/android:toolchain_type"],
-)
+def rules_android_workspace():
+    """ Sets up workspace dependencies for rules_android."""
+
+    maven_install(
+        name = "rules_android_maven",
+        artifacts = [
+            "com.android.tools.build:bundletool:1.6.1",
+        ],
+        repositories = [
+            "https://maven.google.com",
+            "https://repo1.maven.org/maven2",
+        ],
+    )
