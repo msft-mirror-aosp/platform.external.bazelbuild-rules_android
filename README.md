@@ -4,7 +4,7 @@
 
 NOTE: This branch contains a development preview of the Starlark implementation of Android rules for Bazel. This code is incomplete and may not function as-is.
 
-A version of Bazel built at or near head and the following flags are necessary to use these rules:
+Bazel 4.0.0 or newer and the following flags are necessary to use these rules:
 ```
 --experimental_enable_android_migration_apis
 --experimental_google_legacy_api
@@ -12,6 +12,15 @@ A version of Bazel built at or near head and the following flags are necessary t
 --android_databinding_use_v3_4_args
 --experimental_android_databinding_v2
 ```
+
+Also, register the Android toolchains in the `WORKSPACE` file with:
+```
+register_toolchains(
+  "@build_bazel_rules_android//toolchains/android:android_default_toolchain",
+  "@build_bazel_rules_android//toolchains/android_sdk:android_sdk_tools",
+)
+```
+(Assuming that the Android rules repository in the `WORKSPACE` file is named `build_bazel_rules_android`.)
 
 ## Overview
 
@@ -29,17 +38,10 @@ To use the new Bazel Android rules, add the following to your WORKSPACE file:
     load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
     http_archive(
         name = "build_bazel_rules_android",
-        urls = ["https://github.com/bazelbuild/rules_android/archive/refs/heads/pre-alpha.zip"],
-        strip_prefix = "rules_android-pre-alpha",
+        urls = ["https://github.com/bazelbuild/rules_android/archive/v0.1.1.zip"],
+        sha256 = "cd06d15dd8bb59926e4d65f9003bfc20f9da4b2519985c27e190cddc8b7a7806",
+        strip_prefix = "rules_android-0.1.1",
     )
-    load("@build_bazel_rules_android//:defs.bzl", "rules_android_workspace")
-    rules_android_workspace()
-    
-    register_toolchains(
-      "@build_bazel_rules_android//toolchains/android:android_default_toolchain",
-      "@build_bazel_rules_android//toolchains/android_sdk:android_sdk_tools",
-    )
-
 
 Then, in your BUILD files, import and use the rules:
 
