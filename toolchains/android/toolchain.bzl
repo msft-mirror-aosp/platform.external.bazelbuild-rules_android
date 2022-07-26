@@ -104,7 +104,7 @@ _ATTRS = dict(
     ),
     data_binding_annotation_processor = attr.label(
         cfg = "exec",
-        default = "@//tools/android:compiler_annotation_processor",  # TODO: processor rules should be moved into rules_android
+        default = "//tools/android:compiler_annotation_processor",
     ),
     data_binding_annotation_template = attr.label(
         default = "//rules:data_binding_annotation_template.txt",
@@ -146,6 +146,12 @@ _ATTRS = dict(
         cfg = "exec",
         # used in android_local_test
         default = "@androidsdk//:fail",  # TODO: "//src/tools/jdeps", needs Go
+        executable = True,
+    ),
+    object_method_rewriter = attr.label(
+        allow_files = True,
+        cfg = "exec",
+        default = "@androidsdk//:fail",
         executable = True,
     ),
     proguard_allowlister = attr.label(
