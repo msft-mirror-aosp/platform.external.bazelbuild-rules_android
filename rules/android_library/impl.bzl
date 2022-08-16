@@ -27,6 +27,7 @@ load(
     "processing_pipeline",
 )
 load("@rules_android//rules:proguard.bzl", _proguard = "proguard")
+load("@rules_android//rules:providers.bzl", "AndroidLintRulesInfo")
 load("@rules_android//rules:resources.bzl", _resources = "resources")
 load("@rules_android//rules:utils.bzl", "get_android_sdk", "get_android_toolchain", "log", "utils")
 load("@rules_android//rules/flags:flags.bzl", _flags = "flags")
@@ -216,7 +217,7 @@ def _process_data_binding(ctx, java_package, resources_ctx, **unused_sub_ctxs):
             exports = utils.collect_providers(DataBindingV2Info, ctx.attr.exports),
             data_binding_exec = get_android_toolchain(ctx).data_binding_exec.files_to_run,
             data_binding_annotation_processor =
-                get_android_toolchain(ctx).data_binding_annotation_processor[JavaPluginInfo],
+                get_android_toolchain(ctx).data_binding_annotation_processor,
             data_binding_annotation_template =
                 utils.only(get_android_toolchain(ctx).data_binding_annotation_template.files.to_list()),
         ),
@@ -252,10 +253,7 @@ def _process_jvm(ctx, exceptions_ctx, resources_ctx, idl_ctx, db_ctx, **unused_s
         deps =
             utils.collect_providers(JavaInfo, ctx.attr.deps, idl_ctx.idl_deps),
         exports = utils.collect_providers(JavaInfo, ctx.attr.exports),
-        plugins = (
-            utils.collect_providers(JavaPluginInfo, ctx.attr.plugins) +
-            db_ctx.java_plugins
-        ),
+        plugins = utils.collect_providers(JavaPluginInfo, ctx.attr.plugins, db_ctx.java_plugins),
         exported_plugins = utils.collect_providers(
             JavaPluginInfo,
             ctx.attr.exported_plugins,
@@ -272,11 +270,25 @@ def _process_jvm(ctx, exceptions_ctx, resources_ctx, idl_ctx, db_ctx, **unused_s
         java_toolchain = _common.get_java_toolchain(ctx),
     )
 
+    providers = [java_info]
+
+    # Propagate Lint rule Jars from any exported AARs (b/229993446)
+    android_lint_rules = [info.lint_jars for info in utils.collect_providers(
+        AndroidLintRulesInfo,
+        ctx.attr.exports,
+    )]
+    if android_lint_rules:
+        providers.append(
+            AndroidLintRulesInfo(
+                lint_jars = depset(transitive = android_lint_rules),
+            ),
+        )
+
     return ProviderInfo(
         name = "jvm_ctx",
         value = struct(
             java_info = java_info,
-            providers = [java_info],
+            providers = providers,
         ),
     )
 
@@ -404,6 +416,7 @@ def _process_coverage(ctx, **unused_ctx):
             providers = [
                 coverage_common.instrumented_files_info(
                     ctx,
+                    source_attributes = ["srcs"],
                     dependency_attributes = ["assets", "deps", "exports"],
                 ),
             ],
