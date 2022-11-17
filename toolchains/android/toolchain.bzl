@@ -121,6 +121,12 @@ _ATTRS = dict(
         default = "@bazel_tools//tools/android:desugar_java8_extra_bootclasspath",
         executable = True,
     ),
+    enforce_min_sdk_floor_tool = attr.label(
+        allow_files = True,
+        cfg = "exec",
+        default = "//src/tools/enforce_min_sdk_floor",
+        executable = True,
+    ),
     idlclass = attr.label(
         allow_files = True,
         cfg = "exec",
