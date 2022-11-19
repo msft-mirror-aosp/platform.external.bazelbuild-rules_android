@@ -15,7 +15,7 @@
 """Attributes."""
 
 load(
-    "@rules_android//rules:attrs.bzl",
+    "//rules:attrs.bzl",
     _attrs = "attrs",
 )
 
@@ -58,13 +58,13 @@ ATTRS = _attrs.add(
                   "artifacts stored within the AAR.",
         ),
         _flags = attr.label(
-            default = "@rules_android//rules/flags",
+            default = "//rules/flags",
         ),
         _java_toolchain = attr.label(
             default = Label("//tools/jdk:toolchain_android_only"),
         ),
         _host_javabase = attr.label(
-            cfg = "host",
+            cfg = "exec",
             default = Label("//tools/jdk:current_java_runtime"),
         ),
     ),
