@@ -15,7 +15,7 @@
 """Attributes."""
 
 load(
-    "@rules_android//rules:attrs.bzl",
+    "//rules:attrs.bzl",
     _attrs = "attrs",
 )
 
@@ -54,7 +54,7 @@ ATTRS = _attrs.add(
             providers = [
                 [JavaPluginInfo],
             ],
-            cfg = "host",
+            cfg = "exec",
             doc = (
                 "The list of [java_plugin](https://docs.bazel.build/versions/main/be/java.html#java_plugin)s " +
                 "(e.g. annotation processors) to export to libraries that directly depend on this library. " +
@@ -183,7 +183,7 @@ ATTRS = _attrs.add(
         # TODO(str): Remove when fully migrated to android_instrumentation_test
         _android_test_migration = attr.bool(default = False),
         _flags = attr.label(
-            default = "@rules_android//rules/flags",
+            default = "//rules/flags",
         ),
         _package_name = attr.string(),  # for sending the package name to the outputs callback
     ),
