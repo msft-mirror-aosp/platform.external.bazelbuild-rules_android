@@ -17,7 +17,7 @@
 load(":attrs.bzl", "ATTRS")
 load(":impl.bzl", "impl")
 load(
-    "@rules_android//rules:attrs.bzl",
+    "//rules:attrs.bzl",
     _attrs = "attrs",
 )
 
@@ -43,7 +43,7 @@ def make_rule(
         attrs = attrs,
         implementation = implementation,
         provides = provides,
-        toolchains = ["@rules_android//toolchains/android:toolchain_type"],
+        toolchains = ["//toolchains/android:toolchain_type"],
         _skylark_testable = True,
         fragments = [
             "android",
@@ -67,7 +67,7 @@ def sanitize_attrs(attrs, allowed_attrs = ATTRS.keys()):
     Returns:
       A dictionary containing valid attributes.
     """
-    for attr_name in attrs.keys():
+    for attr_name in list(attrs.keys()):
         if attr_name not in allowed_attrs and attr_name not in _DEFAULT_ALLOWED_ATTRS:
             attrs.pop(attr_name, None)
 
