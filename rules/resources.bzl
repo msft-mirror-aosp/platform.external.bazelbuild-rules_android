@@ -116,6 +116,7 @@ _PACKAGED_FINAL_MANIFEST = "processed_manifest"
 _PACKAGED_RESOURCE_APK = "resources_apk"
 _PACKAGED_CLASS_JAR = "class_jar"
 _PACKAGED_VALIDATION_RESULT = "validation_result"
+_RESOURCE_PROGUARD_CONFIG = "resource_proguard_config"
 
 _ResourcesPackageContextInfo = provider(
     "Packaged resources context object",
@@ -126,17 +127,18 @@ _ResourcesPackageContextInfo = provider(
         _PACKAGED_VALIDATION_RESULT: "Validation result.",
         _R_JAVA: "JavaInfo for R.jar",
         _DATA_BINDING_LAYOUT_INFO: "Databinding layout info file.",
+        _RESOURCE_PROGUARD_CONFIG: "Resource proguard config",
         _PROVIDERS: "The list of all providers to propagate.",
     },
 )
 
 # Manifest context attributes
-_MIN_SDK_BUMPED_MANIFEST = "min_sdk_bumped_manifest"
+_PROCESSED_MANIFEST = "processed_manifest"
 
 _ManifestContextInfo = provider(
     "Manifest context object",
     fields = {
-        _MIN_SDK_BUMPED_MANIFEST: "The manifest with the min SDK bumped to the floor.",
+        _PROCESSED_MANIFEST: "The manifest after the min SDK has been changed as necessary.",
     },
 )
 
@@ -688,6 +690,7 @@ def _package(
     packaged_resources_ctx[_PACKAGED_FINAL_MANIFEST] = processed_manifest
     packaged_resources_ctx[_PACKAGED_RESOURCE_APK] = resource_apk
     packaged_resources_ctx[_PACKAGED_VALIDATION_RESULT] = resource_files_zip
+    packaged_resources_ctx[_RESOURCE_PROGUARD_CONFIG] = proguard_cfg
 
     # Fix class jar name because some tests depend on {label_name}_resources.jar being the suffix of
     # the path, with _common.PACKAGED_RESOURCES_SUFFIX removed from the label name.
@@ -1014,7 +1017,7 @@ def _bump_min_sdk(
     """
     manifest_ctx = {}
     if not manifest or floor <= 0:
-        manifest_ctx[_MIN_SDK_BUMPED_MANIFEST] = manifest
+        manifest_ctx[_PROCESSED_MANIFEST] = manifest
         return _ManifestContextInfo(**manifest_ctx)
 
     args = ctx.actions.args()
@@ -1040,7 +1043,57 @@ def _bump_min_sdk(
         mnemonic = "BumpMinSdkFloor",
         progress_message = "Bumping up AndroidManifest min SDK %s" % str(ctx.label),
     )
-    manifest_ctx[_MIN_SDK_BUMPED_MANIFEST] = out_manifest
+    manifest_ctx[_PROCESSED_MANIFEST] = out_manifest
+
+    return _ManifestContextInfo(**manifest_ctx)
+
+def _set_default_min_sdk(
+        ctx,
+        manifest,
+        default,
+        enforce_min_sdk_floor_tool):
+    """ Sets the min SDK attribute of AndroidManifest to default if it is not already set.
+
+    Args:
+      ctx: The rules context.
+      manifest: File. The AndroidManifest.xml file.
+      default: string. The default value for min SDK. The manifest is unchanged if it already
+        specifies a min SDK.
+      enforce_min_sdk_floor_tool: FilesToRunProvider. The enforce_min_sdk_tool executable or
+        FilesToRunprovider
+
+    Returns:
+      A dict containing _ManifestContextInfo provider fields.
+    """
+    manifest_ctx = {}
+    if not manifest or not default:
+        manifest_ctx[_PROCESSED_MANIFEST] = manifest
+        return _ManifestContextInfo(**manifest_ctx)
+
+    args = ctx.actions.args()
+    args.add("-action", "set_default")
+    args.add("-manifest", manifest)
+    args.add("-default_min_sdk", default)
+
+    out_dir = "_migrated/_min_sdk_default_set/" + ctx.label.name + "/"
+    log = ctx.actions.declare_file(
+        out_dir + "log.txt",
+    )
+    args.add("-log", log.path)
+
+    out_manifest = ctx.actions.declare_file(
+        out_dir + "AndroidManifest.xml",
+    )
+    args.add("-output", out_manifest.path)
+    ctx.actions.run(
+        executable = enforce_min_sdk_floor_tool,
+        inputs = [manifest],
+        outputs = [out_manifest, log],
+        arguments = [args],
+        mnemonic = "SetDefaultMinSdkFloor",
+        progress_message = "Setting AndroidManifest min SDK to default %s" % str(ctx.label),
+    )
+    manifest_ctx[_PROCESSED_MANIFEST] = out_manifest
 
     return _ManifestContextInfo(**manifest_ctx)
 
@@ -1790,6 +1843,9 @@ resources = struct(
 
     # Exposed for android_library, aar_import, and android_binary
     bump_min_sdk = _bump_min_sdk,
+
+    # Exposed for use in AOSP
+    set_default_sdk = _set_default_min_sdk,
 
     # Exposed for android_binary
     validate_min_sdk = _validate_min_sdk,
