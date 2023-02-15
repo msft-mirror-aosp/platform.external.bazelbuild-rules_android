@@ -23,6 +23,10 @@ load(
 )
 load("//rules:resources.bzl", _resources = "resources")
 load("//rules:utils.bzl", "compilation_mode", "get_android_toolchain", "utils")
+load(
+    "//rules:native_deps.bzl",
+    _process_native_deps = "process",
+)
 
 def _process_manifest(ctx, **unused_ctxs):
     manifest_ctx = _resources.bump_min_sdk(
@@ -43,7 +47,7 @@ def _process_resources(ctx, manifest_ctx, java_package, **unused_ctxs):
         assets = ctx.files.assets,
         assets_dir = ctx.attr.assets_dir,
         resource_files = ctx.files.resource_files,
-        manifest = manifest_ctx.min_sdk_bumped_manifest,
+        manifest = manifest_ctx.processed_manifest,
         manifest_values = utils.expand_make_vars(ctx, ctx.attr.manifest_values),
         resource_configs = ctx.attr.resource_configuration_filters,
         densities = ctx.attr.densities,
@@ -83,6 +87,18 @@ def _validate_manifest(ctx, packaged_resources_ctx, **unused_ctxs):
     return ProviderInfo(
         name = "manifest_validation_ctx",
         value = manifest_validation_ctx,
+    )
+
+def _process_native_libs(ctx, **_unusued_ctxs):
+    providers = []
+    if acls.in_android_binary_starlark_split_transition(str(ctx.label)):
+        providers.append(_process_native_deps(
+            ctx,
+            filename = "nativedeps",
+        ))
+    return ProviderInfo(
+        name = "native_libs_ctx",
+        value = struct(providers = providers),
     )
 
 def use_legacy_manifest_merger(ctx):
@@ -130,6 +146,7 @@ PROCESSORS = dict(
     ManifestProcessor = _process_manifest,
     ResourceProcessor = _process_resources,
     ValidateManifestProcessor = _validate_manifest,
+    NativeLibsProcessor = _process_native_libs,
 )
 
 _PROCESSING_PIPELINE = processing_pipeline.make_processing_pipeline(
