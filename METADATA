@@ -13,6 +13,6 @@ third_party {
     value: "https://github.com/bazelbuild/rules_android"
   }
   version: "ab13c86fafc79b965b7ad6e4d91c821760d869d3"
-  last_upgrade_date { year: 2023 month: 2 day: 08 }
+  last_upgrade_date { year: 2023 month: 3 day: 17 }
   license_type: NOTICE
 }
