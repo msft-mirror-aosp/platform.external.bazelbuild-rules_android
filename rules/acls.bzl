@@ -70,11 +70,12 @@ load(
 )
 load("//rules/acls:kt_android_library_rollout.bzl", "KT_ANDROID_LIBRARY_FALLBACK", "KT_ANDROID_LIBRARY_ROLLOUT")
 load("//rules/acls:android_instrumentation_test_manifest_check_rollout.bzl", "ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_FALLBACK", "ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_ROLLOUT")
-load("//rules/acls:android_instrumentation_test_prebuilt_test_apk.bzl", "ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK")
+load("//rules/acls:android_instrumentation_test_prebuilt_test_apk.bzl", "ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_FALLBACK", "ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_ROLLOUT")
 load("//rules/acls:android_rules_with_kt_rollout.bzl", "ANDROID_RULES_WITH_KT_FALLBACK", "ANDROID_RULES_WITH_KT_ROLLOUT")
 load("//rules/acls:baseline_profiles_rollout.bzl", "BASELINE_PROFILES_ROLLOUT")
 load("//rules/acls:enforce_min_sdk_floor_rollout.bzl", "ENFORCE_MIN_SDK_FLOOR_FALLBACK", "ENFORCE_MIN_SDK_FLOOR_ROLLOUT")
 load("//rules/acls:android_apk_to_bundle_features_lockdown.bzl", "ANDROID_APK_TO_BUNDLE_FEATURES")
+load("//rules/acls:android_local_test_jdk_sts_rollout.bzl", "ANDROID_LOCAL_TEST_JDK_STS_FALLBACK", "ANDROID_LOCAL_TEST_JDK_STS_ROLLOUT")
 
 def _in_aar_import_deps_checker(fqn):
     return not matches(fqn, AAR_IMPORT_DEPS_CHECKER_FALLBACK_DICT) and matches(fqn, AAR_IMPORT_DEPS_CHECKER_ROLLOUT_DICT)
@@ -193,7 +194,7 @@ def _in_android_instrumentation_test_manifest_check_rollout(fqn):
     return not matches(fqn, ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_FALLBACK_DICT) and matches(fqn, ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_ROLLOUT_DICT)
 
 def _in_android_instrumentation_test_prebuilt_test_apk(fqn):
-    return matches(fqn, ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_DICT)
+    return matches(fqn, ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_ROLLOUT_DICT) and not matches(fqn, ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_FALLBACK_DICT)
 
 def _in_android_rules_with_kt_rollout(fqn):
     return not matches(fqn, ANDROID_RULES_WITH_KT_FALLBACK_DICT) and matches(fqn, ANDROID_RULES_WITH_KT_ROLLOUT_DICT)
@@ -212,6 +213,9 @@ def _in_android_apk_to_bundle_features(fqn):
 
 def _get_android_archive_duplicate_class_allowlist(fqn):
     return ANDROID_ARCHIVE_DUPLICATE_CLASS_ALLOWLIST.get(fqn, [])
+
+def _in_android_local_test_jdk_sts_rollout(fqn):
+    return not matches(fqn, ANDROID_LOCAL_TEST_JDK_STS_FALLBACK_DICT) and matches(fqn, ANDROID_LOCAL_TEST_JDK_STS_ROLLOUT_DICT)
 
 def make_dict(lst):
     """Do not use this method outside of acls directory."""
@@ -281,12 +285,15 @@ KT_ANDROID_LIBRARY_ROLLOUT_DICT = make_dict(KT_ANDROID_LIBRARY_ROLLOUT)
 KT_ANDROID_LIBRARY_FALLBACK_DICT = make_dict(KT_ANDROID_LIBRARY_FALLBACK)
 ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_ROLLOUT_DICT = make_dict(ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_ROLLOUT)
 ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_FALLBACK_DICT = make_dict(ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_FALLBACK)
-ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_DICT = make_dict(ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK)
+ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_ROLLOUT_DICT = make_dict(ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_ROLLOUT)
+ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_FALLBACK_DICT = make_dict(ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_FALLBACK)
 BASELINE_PROFILES_ROLLOUT_DICT = make_dict(BASELINE_PROFILES_ROLLOUT)
 ENFORCE_MIN_SDK_FLOOR_ROLLOUT_DICT = make_dict(ENFORCE_MIN_SDK_FLOOR_ROLLOUT)
 ENFORCE_MIN_SDK_FLOOR_FALLBACK_DICT = make_dict(ENFORCE_MIN_SDK_FLOOR_FALLBACK)
 ANDROID_APK_TO_BUNDLE_FEATURES_DICT = make_dict(ANDROID_APK_TO_BUNDLE_FEATURES)
 ANDROID_LIBRARY_USE_AOSP_AIDL_COMPILER_ALLOWLIST_DICT = make_dict(ANDROID_LIBRARY_USE_AOSP_AIDL_COMPILER_ALLOWLIST)
+ANDROID_LOCAL_TEST_JDK_STS_FALLBACK_DICT = make_dict(ANDROID_LOCAL_TEST_JDK_STS_FALLBACK)
+ANDROID_LOCAL_TEST_JDK_STS_ROLLOUT_DICT = make_dict(ANDROID_LOCAL_TEST_JDK_STS_ROLLOUT)
 
 def matches(fqn, dct):
     # Labels with workspace names ("@workspace//pkg:target") are not supported.
@@ -369,6 +376,7 @@ acls = struct(
     in_baseline_profiles_rollout = _in_baseline_profiles_rollout,
     in_enforce_min_sdk_floor_rollout = _in_enforce_min_sdk_floor_rollout,
     in_android_apk_to_bundle_features = _in_android_apk_to_bundle_features,
+    in_android_local_test_jdk_sts_rollout = _in_android_local_test_jdk_sts_rollout,
 )
 
 # Visible for testing
