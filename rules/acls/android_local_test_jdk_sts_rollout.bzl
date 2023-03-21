@@ -1,4 +1,4 @@
-# Copyright 2022 The Bazel Authors. All rights reserved.
+# Copyright 2023 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Allow list of a_i_t targets allowed to use a prebuilt test apk."""
+"""Allow and fallback lists for using the latest JDK runtime in android_local_test."""
 
 # keep sorted
-ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_ROLLOUT = [
+ANDROID_LOCAL_TEST_JDK_STS_ROLLOUT = [
 ]
 
-ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_FALLBACK = [
+# keep sorted
+ANDROID_LOCAL_TEST_JDK_STS_FALLBACK = [
+    "//:__subpackages__",
 ]
