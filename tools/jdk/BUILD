@@ -7,6 +7,7 @@ default_java_toolchain(
         # TODO(b/175805830): Add this only when desugaring is enabled.
         "@bazel_tools//tools/android:desugar_java8_extra_bootclasspath",
     ],
+    java_runtime = ":current_java_runtime",
     visibility = ["//visibility:public"],
 )
 
