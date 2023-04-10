@@ -52,6 +52,14 @@ _IDL_SRC_FROM_DIFFERENT_PACKAGE_ERROR = (
     "package or depend on an appropriate rule there."
 )
 
+_IDL_USES_AOSP_COMPILER_ERROR = (
+    "Use of `idl_uses_aosp_compiler` is not allowed for %s."
+)
+
+_IDL_IDLOPTS_UNSUPPORTERD_ERROR = (
+    "`idlopts` is supported only if `idl_uses_aosp_compiler` is set to true."
+)
+
 # Android library AAR context attributes.
 _PROVIDERS = "providers"
 _VALIDATION_OUTPUTS = "validation_outputs"
@@ -64,9 +72,11 @@ _AARContextInfo = provider(
     },
 )
 
+def _has_srcs(ctx):
+    return ctx.files.srcs or ctx.files.idl_srcs or getattr(ctx.files, "common_srcs", False)
+
 def _uses_deprecated_implicit_export(ctx):
-    return (ctx.attr.deps and not (ctx.files.srcs or
-                                   ctx.files.idl_srcs or
+    return (ctx.attr.deps and not (_has_srcs(ctx) or
                                    ctx.attr._defined_assets or
                                    ctx.files.resource_files or
                                    ctx.attr.manifest))
@@ -74,10 +84,10 @@ def _uses_deprecated_implicit_export(ctx):
 def _uses_resources_and_deps_without_srcs(ctx):
     return (ctx.attr.deps and
             (ctx.attr._defined_assets or ctx.files.resource_files or ctx.attr.manifest) and
-            not (ctx.files.srcs or ctx.files.idl_srcs))
+            not _has_srcs(ctx))
 
 def _check_deps_without_java_srcs(ctx):
-    if not ctx.attr.deps or ctx.files.srcs or ctx.files.idl_srcs:
+    if not ctx.attr.deps or _has_srcs(ctx):
         return False
     gfn = getattr(ctx.attr, "generator_function", "")
     if _uses_deprecated_implicit_export(ctx):
@@ -98,6 +108,15 @@ def _validate_rule_context(ctx):
     for idl_src in ctx.attr.idl_srcs:
         if ctx.label.package != idl_src.label.package:
             log.error(_IDL_SRC_FROM_DIFFERENT_PACKAGE_ERROR % idl_src.label)
+
+    # Ensure that the AOSP AIDL compiler is used only in allowlisted packages
+    if (ctx.attr.idl_uses_aosp_compiler and
+        not acls.in_android_library_use_aosp_aidl_compiler_allowlist(str(ctx.label))):
+        log.error(_IDL_USES_AOSP_COMPILER_ERROR % ctx.label)
+
+    # Check if idlopts is with idl_uses_aosp_compiler
+    if ctx.attr.idlopts and not ctx.attr.idl_uses_aosp_compiler:
+        log.error(_IDL_IDLOPTS_UNSUPPORTERD_ERROR)
 
     return struct(
         enable_deps_without_srcs = _check_deps_without_java_srcs(ctx),
@@ -132,7 +151,7 @@ def _process_resources(ctx, java_package, manifest_ctx, **unused_ctxs):
     # Process Android Resources
     resources_ctx = _resources.process(
         ctx,
-        manifest = manifest_ctx.min_sdk_bumped_manifest,
+        manifest = manifest_ctx.processed_manifest,
         resource_files = ctx.attr.resource_files,
         defined_assets = ctx.attr._defined_assets,
         assets = ctx.attr.assets,
@@ -152,7 +171,6 @@ def _process_resources(ctx, java_package, manifest_ctx, **unused_ctxs):
         # misbehavior on the Java side.
         fix_resource_transitivity = bool(ctx.attr.srcs),
         fix_export_exporting = acls.in_fix_export_exporting_rollout(str(ctx.label)),
-        propagate_resources = not ctx.attr._android_test_migration,
 
         # Tool and Processing related inputs
         aapt = get_android_toolchain(ctx).aapt2.files_to_run,
@@ -201,10 +219,14 @@ def _process_idl(ctx, **unused_sub_ctxs):
             aidl = get_android_sdk(ctx).aidl,
             aidl_lib = get_android_sdk(ctx).aidl_lib,
             aidl_framework = get_android_sdk(ctx).framework_aidl,
+            uses_aosp_compiler = ctx.attr.idl_uses_aosp_compiler,
+            idlopts = ctx.attr.idlopts,
         ),
     )
 
 def _process_data_binding(ctx, java_package, resources_ctx, **unused_sub_ctxs):
+    if ctx.attr.enable_data_binding and not acls.in_databinding_allowed(str(ctx.label)):
+        fail("This target is not allowed to use databinding and enable_data_binding is True.")
     return ProviderInfo(
         name = "db_ctx",
         value = _data_binding.process(
@@ -385,7 +407,7 @@ def _process_intellij(ctx, java_package, manifest_ctx, resources_ctx, idl_ctx, j
     android_ide_info = _intellij.make_android_ide_info(
         ctx,
         java_package = java_package,
-        manifest = manifest_ctx.min_sdk_bumped_manifest,
+        manifest = manifest_ctx.processed_manifest,
         defines_resources = resources_ctx.defines_resources,
         merged_manifest = resources_ctx.merged_manifest,
         resources_apk = resources_ctx.resources_apk,
