@@ -1,4 +1,4 @@
-# Copyright 2020 The Bazel Authors. All rights reserved.
+# Copyright 2023 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Allow list to rollout the kt_android_library rule from rules_android."""
+"""Allowlist for directly or transitively linking against shared resource apks."""
 
-# keep sorted
-KT_ANDROID_LIBRARY_ROLLOUT = [
-    "//:__subpackages__",
-]
-
-# keep sorted
-KT_ANDROID_LIBRARY_FALLBACK = [
+SHARED_LIBRARY_RESOURCE_LINKING_ALLOWLIST = [
+    "//tools/build_defs/android/test/dev/resources/shared_lib:app1_RESOURCES_DO_NOT_USE",
+    "//tools/build_defs/android/test/dev/resources/shared_lib:app2_RESOURCES_DO_NOT_USE",
+    "//tools/build_defs/android/test/dev/resources/shared_lib:app3_RESOURCES_DO_NOT_USE",
 ]
