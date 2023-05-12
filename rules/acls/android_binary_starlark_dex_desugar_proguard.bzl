@@ -1,4 +1,4 @@
-# Copyright 2022 The Bazel Authors. All rights reserved.
+# Copyright 2023 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Allow and fallback lists for Kotlin Compilation in the Android Rules."""
+"""Allow list for rollout of Starlark dex, desugar and proguard in android_binary_internal."""
 
 # keep sorted
-ANDROID_RULES_WITH_KT_ROLLOUT = [
-]
+ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_ROLLOUT = []
 
-ANDROID_RULES_WITH_KT_FALLBACK = [
-]
+# keep sorted
+ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_FALLBACK = []
