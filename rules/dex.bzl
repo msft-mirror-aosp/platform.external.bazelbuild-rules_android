@@ -14,10 +14,94 @@
 
 """Bazel Dex Commands."""
 
+load(":utils.bzl", "get_android_toolchain", "utils")
+load(":providers.bzl", "StarlarkAndroidDexInfo")
 load("@bazel_skylib//lib:collections.bzl", "collections")
 load("//rules:attrs.bzl", _attrs = "attrs")
 
 _tristate = _attrs.tristate
+
+def _process_incremental_dexing(
+        ctx,
+        deps = [],
+        runtime_jars = [],
+        dexopts = [],
+        main_dex_list = [],
+        min_sdk_version = 0,
+        java_info = None,
+        desugar_dict = {},
+        dexbuilder = None,
+        dexmerger = None):
+    classes_dex_zip = _get_dx_artifact(ctx, "classes.dex.zip")
+    info = _merge_infos(utils.collect_providers(StarlarkAndroidDexInfo, deps))
+
+    incremental_dexopts = _incremental_dexopts(dexopts, ctx.fragments.android.get_dexopts_supported_in_incremental_dexing)
+    dex_archives_list = info.dex_archives_dict.get("".join(incremental_dexopts), depset()).to_list()
+    dex_archives = _to_dexed_classpath(
+        dex_archives_dict = {d.jar: d.dex for d in dex_archives_list},
+        classpath = java_info.transitive_runtime_jars.to_list(),
+        runtime_jars = runtime_jars,
+    )
+
+    for jar in runtime_jars:
+        dex_archive = _get_dx_artifact(ctx, jar.basename + ".dex.zip")
+        _dex(
+            ctx,
+            input = desugar_dict[jar] if jar in desugar_dict else jar,
+            output = dex_archive,
+            incremental_dexopts = incremental_dexopts,
+            min_sdk_version = min_sdk_version,
+            dex_exec = dexbuilder,
+        )
+        dex_archives.append(dex_archive)
+
+    _dex_merge(
+        ctx,
+        output = classes_dex_zip,
+        inputs = dex_archives,
+        multidex_strategy = "minimal",
+        main_dex_list = main_dex_list,
+        dexopts = dexopts,
+        dexmerger = dexmerger,
+    )
+
+    return classes_dex_zip
+
+def _append_java8_legacy_dex(
+        ctx,
+        output = None,
+        input = None,
+        java8_legacy_dex = None,
+        dex_zips_merger = None):
+    args = ctx.actions.args()
+
+    # Order matters here: we want java8_legacy_dex to be the highest-numbered classesN.dex
+    args.add("--input_zip", input)
+    args.add("--input_zip", java8_legacy_dex)
+    args.add("--output_zip", output)
+
+    ctx.actions.run(
+        executable = dex_zips_merger,
+        inputs = [input, java8_legacy_dex],
+        outputs = [output],
+        arguments = [args],
+        mnemonic = "AppendJava8LegacyDex",
+        use_default_shell_env = True,
+        progress_message = "Adding Java8 legacy library for %s" % ctx.label,
+    )
+
+def _to_dexed_classpath(dex_archives_dict = {}, classpath = [], runtime_jars = []):
+    dexed_classpath = []
+    for jar in classpath:
+        if jar not in dex_archives_dict:
+            if jar not in runtime_jars:
+                fail("Dependencies on .jar artifacts are not allowed in Android binaries, please use " +
+                     "a java_import to depend on " + jar.short_path +
+                     ". If this is an implicit dependency then the rule that " +
+                     "introduces it will need to be fixed to account for it correctly.")
+        else:
+            dexed_classpath.append(dex_archives_dict[jar])
+    return dexed_classpath
 
 def _dex(
         ctx,
@@ -89,6 +173,32 @@ def _get_effective_incremental_dexing(
     # use_incremental_dexing config flag will take effect if incremental_dexing attr is not set
     return use_incremental_dexing
 
+def _get_java8_legacy_dex_and_map(ctx, build_customized_files = False, binary_jar = None, android_jar = None):
+    if not build_customized_files:
+        return utils.only(get_android_toolchain(ctx).java8_legacy_dex.files.to_list()), None
+    else:
+        java8_legacy_dex_rules = _get_dx_artifact(ctx, "_java8_legacy.dex.pgcfg")
+        java8_legacy_dex_map = _get_dx_artifact(ctx, "_java8_legacy.dex.map")
+        java8_legacy_dex = _get_dx_artifact(ctx, "_java8_legacy.dex.zip")
+
+        args = ctx.actions.args()
+        args.add("--rules", java8_legacy_dex_rules)
+        args.add("--binary", binary_jar)
+        args.add("--android_jar", android_jar)
+        args.add("--output", java8_legacy_dex)
+        args.add("--output_map", java8_legacy_dex_map)
+
+        ctx.actions.run(
+            executable = get_android_toolchain(ctx).build_java8_legacy_dex.files_to_run,
+            inputs = [binary_jar, android_jar],
+            outputs = [java8_legacy_dex_rules, java8_legacy_dex_map, java8_legacy_dex],
+            arguments = [args],
+            mnemonic = "BuildLegacyDex",
+            progress_message = "Building Java8 legacy library for %s" % ctx.label,
+        )
+
+        return java8_legacy_dex, java8_legacy_dex_map
+
 def _dex_merge(
         ctx,
         output = None,
@@ -101,7 +211,7 @@ def _dex_merge(
     args.add("--multidex", multidex_strategy)
     args.add_all(inputs, before_each = "--input")
     args.add("--output", output)
-    args.add_all(_merger_dexopts(ctx, dexopts))
+    args.add_all(_merger_dexopts(dexopts, ctx.fragments.android.get_dexopts_supported_in_dex_merger))
 
     if main_dex_list:
         inputs.append(main_dex_list)
@@ -122,6 +232,19 @@ def _merger_dexopts(tokenized_dexopts, dexopts_supported_in_dex_merger):
 def _incremental_dexopts(tokenized_dexopts, dexopts_supported_in_incremental_dexing):
     return _normalize_dexopts(_filter_dexopts(tokenized_dexopts, dexopts_supported_in_incremental_dexing))
 
+def _merge_infos(infos):
+    dex_archives_dict = {}
+    for info in infos:
+        for dexopts in info.dex_archives_dict:
+            if dexopts not in dex_archives_dict:
+                dex_archives_dict[dexopts] = [info.dex_archives_dict[dexopts]]
+            else:
+                dex_archives_dict[dexopts].append(info.dex_archives_dict[dexopts])
+    return StarlarkAndroidDexInfo(
+        dex_archives_dict =
+            {dexopts: depset(direct = [], transitive = dex_archives) for dexopts, dex_archives in dex_archives_dict.items()},
+    )
+
 def _filter_dexopts(candidates, allowed):
     return [c for c in candidates if c in allowed]
 
@@ -132,10 +255,14 @@ def _normalize_dexopts(tokenized_dexopts):
     return collections.uniq(sorted([_dx_to_dexbuilder(token) for token in tokenized_dexopts]))
 
 dex = struct(
+    append_java8_legacy_dex = _append_java8_legacy_dex,
     dex = _dex,
     dex_merge = _dex_merge,
     get_dx_artifact = _get_dx_artifact,
     get_effective_incremental_dexing = _get_effective_incremental_dexing,
+    get_java8_legacy_dex_and_map = _get_java8_legacy_dex_and_map,
     incremental_dexopts = _incremental_dexopts,
+    merge_infos = _merge_infos,
     normalize_dexopts = _normalize_dexopts,
+    process_incremental_dexing = _process_incremental_dexing,
 )
