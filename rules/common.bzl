@@ -43,7 +43,7 @@ def _get_host_javabase(ctx):
         _log.error("Missing _host_javabase attr")
     return ctx.attr._host_javabase
 
-def _filter_zip(ctx, in_zip, out_zip, filters = []):
+def _filter_zip_include(ctx, in_zip, out_zip, filters = []):
     """Creates a copy of a zip file with files that match filters."""
     args = ctx.actions.args()
     args.add("-q")
@@ -57,8 +57,60 @@ def _filter_zip(ctx, in_zip, out_zip, filters = []):
         arguments = [args],
         inputs = [in_zip],
         outputs = [out_zip],
-        mnemonic = "FilterZip",
+        mnemonic = "FilterZipInclude",
         progress_message = "Filtering %s" % in_zip.short_path,
+    )
+
+def _filter_zip_exclude(
+        ctx,
+        output = None,
+        input = None,
+        filter_zips = [],
+        filter_types = [],
+        filters = [],
+        check_hash_mismatch = False,
+        compression_mode = "DONT_CARE"):
+    """Filter out entries from a zip file based on the filter types and filter zips.
+
+    Args:
+        ctx: The Context.
+        output: File. The output zip.
+        input: File. The input zip.
+        filter_zips: List of Files. The zips used as filters. Contents in these files will be omitted from the output zip.
+        filter_types: List of strings. Only contents in the filter Zip files with these extensions will be filtered out.
+        filters: List of strings. The regex to the set of filters to always check for and remove.
+        check_hash_mismatch: Boolean. Whether to enable checking of hash mismatches for files with the same name.
+        compression_mode: String. The compression mode for the output zip. There are 3 modes:
+            * FORCE_DEFLATE: Force the output zip to be compressed.
+            * FORCE_STORED: Force the output zip to be stored.
+            * DONT_CARE: The output zip will have the same compression mode with the input zip.
+    """
+    args = ctx.actions.args()
+
+    args.add("inputZip", input.path)
+    args.add("--outputZip", output.path)
+
+    if filter_zips:
+        args.add("--filterZips", ",".join([z.path for z in filter_zips]))
+    if filter_types:
+        args.add("--filterTypes", ",".join(filter_types))
+    if filters:
+        args.add("--explicitFilters", ",".join(filters))
+
+    if check_hash_mismatch:
+        args.add("--checkHashMismatch", "ERROR")
+    else:
+        args.add("--checkHashMisMatch", "IGNORE")
+
+    args.add("--outputMode", compression_mode)
+
+    ctx.actions.run(
+        executable = get_android_toolchain(ctx).zip_filter.files_to_run,
+        arguments = [args],
+        inputs = [input] + filter_zips,
+        outputs = [output],
+        mnemonic = "FilterZipExclude",
+        progress_message = "Filtering %s" % input.short_path,
     )
 
 def _create_signer_properties(ctx, oldest_key):
@@ -76,7 +128,8 @@ common = struct(
     create_signer_properties = _create_signer_properties,
     get_host_javabase = _get_host_javabase,
     get_java_toolchain = _get_java_toolchain,
-    filter_zip = _filter_zip,
+    filter_zip_include = _filter_zip_include,
+    filter_zip_exclude = _filter_zip_exclude,
 )
 
 android_common = _native_android_common
