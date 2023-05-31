@@ -62,7 +62,6 @@ load("//rules/acls:local_test_multi_proto.bzl", "LOCAL_TEST_MULTI_PROTO_PKG")
 load("//rules/acls:local_test_rollout.bzl", "LOCAL_TEST_FALLBACK", "LOCAL_TEST_ROLLOUT")
 load("//rules/acls:local_test_starlark_resources.bzl", "LOCAL_TEST_STARLARK_RESOURCES_FALLBACK", "LOCAL_TEST_STARLARK_RESOURCES_ROLLOUT")
 load("//rules/acls:android_test_platform_rollout.bzl", "ANDROID_TEST_PLATFORM_FALLBACK", "ANDROID_TEST_PLATFORM_ROLLOUT")
-load("//rules/acls:sourceless_binary_rollout.bzl", "SOURCELESS_BINARY_FALLBACK", "SOURCELESS_BINARY_ROLLOUT")
 load("//rules/acls:test_to_instrument_test_rollout.bzl", "TEST_TO_INSTRUMENT_TEST_FALLBACK", "TEST_TO_INSTRUMENT_TEST_ROLLOUT")
 load(
     "//rules/acls:partial_jetification_targets.bzl",
@@ -77,6 +76,7 @@ load("//rules/acls:android_apk_to_bundle_features_lockdown.bzl", "ANDROID_APK_TO
 load("//rules/acls:android_local_test_jdk_sts_rollout.bzl", "ANDROID_LOCAL_TEST_JDK_STS_FALLBACK", "ANDROID_LOCAL_TEST_JDK_STS_ROLLOUT")
 load("//rules/acls:shared_library_resource_linking.bzl", "SHARED_LIBRARY_RESOURCE_LINKING_ALLOWLIST")
 load("//rules/acls:android_binary_starlark_dex_desugar_proguard.bzl", "ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_FALLBACK", "ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_ROLLOUT")
+load("//rules/acls:android_binary_min_sdk_version_attribute.bzl", "ANDROID_BINARY_MIN_SDK_VERSION_ATTRIBUTE_ALLOWLIST")
 
 def _in_aar_import_deps_checker(fqn):
     return not matches(fqn, AAR_IMPORT_DEPS_CHECKER_FALLBACK_DICT) and matches(fqn, AAR_IMPORT_DEPS_CHECKER_ROLLOUT_DICT)
@@ -179,9 +179,6 @@ def _in_local_test_starlark_resources(fqn):
 def _in_android_test_platform_rollout(fqn):
     return not matches(fqn, ANDROID_TEST_PLATFORM_FALLBACK_DICT) and matches(fqn, ANDROID_TEST_PLATFORM_ROLLOUT_DICT)
 
-def _in_sourceless_binary_rollout(fqn):
-    return not matches(fqn, SOURCELESS_BINARY_FALLBACK_DICT) and matches(fqn, SOURCELESS_BINARY_ROLLOUT_DICT)
-
 def _in_test_to_instrument_test_rollout(fqn):
     return not matches(fqn, TEST_TO_INSTRUMENT_TEST_FALLBACK_DICT) and matches(fqn, TEST_TO_INSTRUMENT_TEST_ROLLOUT_DICT)
 
@@ -220,6 +217,9 @@ def _in_shared_library_resource_linking_allowlist(fqn):
 
 def _in_android_binary_starlark_dex_desugar_proguard(fqn):
     return not matches(fqn, ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_FALLBACK_DICT) and matches(fqn, ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_ROLLOUT_DICT)
+
+def _in_android_binary_min_sdk_version_attribute_allowlist(fqn):
+    return matches(fqn, ANDROID_BINARY_MIN_SDK_VERSION_ATTRIBUTE_DICT)
 
 def make_dict(lst):
     """Do not use this method outside of acls directory."""
@@ -276,8 +276,6 @@ LOCAL_TEST_STARLARK_RESOURCES_FALLBACK_DICT = make_dict(LOCAL_TEST_STARLARK_RESO
 LOCAL_TEST_STARLARK_RESOURCES_ROLLOUT_DICT = make_dict(LOCAL_TEST_STARLARK_RESOURCES_ROLLOUT)
 ANDROID_TEST_PLATFORM_FALLBACK_DICT = make_dict(ANDROID_TEST_PLATFORM_FALLBACK)
 ANDROID_TEST_PLATFORM_ROLLOUT_DICT = make_dict(ANDROID_TEST_PLATFORM_ROLLOUT)
-SOURCELESS_BINARY_FALLBACK_DICT = make_dict(SOURCELESS_BINARY_FALLBACK)
-SOURCELESS_BINARY_ROLLOUT_DICT = make_dict(SOURCELESS_BINARY_ROLLOUT)
 TEST_TO_INSTRUMENT_TEST_FALLBACK_DICT = make_dict(TEST_TO_INSTRUMENT_TEST_FALLBACK)
 TEST_TO_INSTRUMENT_TEST_ROLLOUT_DICT = make_dict(TEST_TO_INSTRUMENT_TEST_ROLLOUT)
 ALLOW_RESOURCE_CONFLICTS_DICT = make_dict(ALLOW_RESOURCE_CONFLICTS)
@@ -299,6 +297,7 @@ DATABINDING_DISALLOWED_DICT = make_dict(DATABINDING_DISALLOWED)
 SHARED_LIBRARY_RESOURCE_LINKING_DICT = make_dict(SHARED_LIBRARY_RESOURCE_LINKING_ALLOWLIST)
 ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_ROLLOUT_DICT = make_dict(ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_ROLLOUT)
 ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_FALLBACK_DICT = make_dict(ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_FALLBACK)
+ANDROID_BINARY_MIN_SDK_VERSION_ATTRIBUTE_DICT = make_dict(ANDROID_BINARY_MIN_SDK_VERSION_ATTRIBUTE_ALLOWLIST)
 
 def matches(fqn, dct):
     # Labels with workspace names ("@workspace//pkg:target") are not supported.
@@ -374,7 +373,6 @@ acls = struct(
     in_local_test_rollout = _in_local_test_rollout,
     in_local_test_starlark_resources = _in_local_test_starlark_resources,
     in_android_test_platform_rollout = _in_android_test_platform_rollout,
-    in_sourceless_binary_rollout = _in_sourceless_binary_rollout,
     in_test_to_instrument_test_rollout = _in_test_to_instrument_test_rollout,
     in_allow_resource_conflicts = _in_allow_resource_conflicts,
     in_partial_jetification_targets = _in_partial_jetification_targets,
@@ -386,6 +384,7 @@ acls = struct(
     in_android_local_test_jdk_sts_rollout = _in_android_local_test_jdk_sts_rollout,
     in_shared_library_resource_linking_allowlist = _in_shared_library_resource_linking_allowlist,
     in_android_binary_starlark_dex_desugar_proguard = _in_android_binary_starlark_dex_desugar_proguard,
+    in_android_binary_min_sdk_version_attribute_allowlist = _in_android_binary_min_sdk_version_attribute_allowlist,
 )
 
 # Visible for testing
