@@ -115,10 +115,25 @@ _ATTRS = dict(
         default = "@bazel_tools//tools/android:databinding_exec",
         executable = True,
     ),
+    desugar = attr.label(
+        cfg = "exec",
+        default = Label("@bazel_tools//tools/android:desugar_java8"),
+        executable = True,
+    ),
     desugar_java8_extra_bootclasspath = attr.label(
         allow_files = True,
         cfg = "exec",
         default = "@bazel_tools//tools/android:desugar_java8_extra_bootclasspath",
+        executable = True,
+    ),
+    dexbuilder = attr.label(
+        cfg = "exec",
+        default = Label("@bazel_tools//tools/android:dexbuilder"),
+        executable = True,
+    ),
+    dexmerger = attr.label(
+        cfg = "exec",
+        default = Label("@bazel_tools//tools/android:dexmerger"),
         executable = True,
     ),
     enforce_min_sdk_floor_tool = attr.label(
@@ -200,6 +215,26 @@ _ATTRS = dict(
     zip_tool = attr.label(
         cfg = "exec",
         default = "//toolchains/android:zip",
+        executable = True,
+    ),
+    zip_filter = attr.label(
+        cfg = "exec",
+        default = "@bazel_tools//tools/android:zip_filter",
+        executable = True,
+    ),
+    dex_zips_merger = attr.label(
+        cfg = "exec",
+        default = "@bazel_tools//tools/android:merge_dexzips",
+        executable = True,
+    ),
+    java8_legacy_dex = attr.label(
+        allow_single_file = True,
+        cfg = "exec",
+        default = "@bazel_tools//tools/android:java8_legacy_dex",
+    ),
+    build_java8_legacy_dex = attr.label(
+        cfg = "exec",
+        default = "@bazel_tools//tools/android:build_java8_legacy_dex",
         executable = True,
     ),
 )

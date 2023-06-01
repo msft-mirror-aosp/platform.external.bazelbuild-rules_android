@@ -22,6 +22,36 @@ load(
     "//rules:native_deps.bzl",
     "split_config_aspect",
 )
+load("//rules:providers.bzl", "StarlarkApkInfo")
+load("//rules:dex_desugar_aspect.bzl", "dex_desugar_aspect")
+
+def make_deps(allow_rules, providers, aspects):
+    return attr.label_list(
+        allow_files = True,
+        allow_rules = allow_rules,
+        providers = providers,
+        aspects = aspects,
+        cfg = android_common.multi_cpu_configuration,
+    )
+
+DEPS_ALLOW_RULES = [
+    "aar_import",
+    "android_library",
+    "cc_library",
+    "java_import",
+    "java_library",
+    "java_lite_proto_library",
+]
+
+DEPS_PROVIDERS = [
+    [CcInfo],
+    [JavaInfo],
+    ["AndroidResourcesInfo", "AndroidAssetsInfo"],
+]
+
+DEPS_ASPECTS = [
+    dex_desugar_aspect,
+]
 
 ATTRS = _attrs.replace(
     _attrs.add(
@@ -30,23 +60,7 @@ ATTRS = _attrs.replace(
                 # TODO(timpeut): Set PropertyFlag direct_compile_time_input
                 allow_files = [".java", ".srcjar"],
             ),
-            deps = attr.label_list(
-                allow_files = True,
-                allow_rules = [
-                    "aar_import",
-                    "android_library",
-                    "cc_library",
-                    "java_import",
-                    "java_library",
-                    "java_lite_proto_library",
-                ],
-                providers = [
-                    [CcInfo],
-                    [JavaInfo],
-                    ["AndroidResourcesInfo", "AndroidAssetsInfo"],
-                ],
-                cfg = android_common.multi_cpu_configuration,
-            ),
+            deps = make_deps(DEPS_ALLOW_RULES, DEPS_PROVIDERS, DEPS_ASPECTS),
             enable_data_binding = attr.bool(),
             instruments = attr.label(),
             manifest_values = attr.string_dict(),
@@ -59,10 +73,25 @@ ATTRS = _attrs.replace(
                 allow_rules = ["android_binary", "android_test"],
             ),
             proguard_specs = attr.label_list(allow_empty = True, allow_files = True),
+            resource_apks = attr.label_list(
+                allow_rules = ["apk_import"],
+                providers = [
+                    [StarlarkApkInfo],
+                ],
+                doc = (
+                    "List of resource only apks to link against."
+                ),
+            ),
             resource_configuration_filters = attr.string_list(),
             densities = attr.string_list(),
             nocompress_extensions = attr.string_list(),
             shrink_resources = _attrs.tristate.create(
+                default = _attrs.tristate.auto,
+            ),
+            dexopts = attr.string_list(),
+            main_dex_list = attr.label(allow_single_file = True),
+            min_sdk_version = attr.int(),
+            incremental_dexing = _attrs.tristate.create(
                 default = _attrs.tristate.auto,
             ),
             _java_toolchain = attr.label(

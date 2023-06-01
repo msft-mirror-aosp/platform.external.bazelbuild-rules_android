@@ -62,21 +62,21 @@ load("//rules/acls:local_test_multi_proto.bzl", "LOCAL_TEST_MULTI_PROTO_PKG")
 load("//rules/acls:local_test_rollout.bzl", "LOCAL_TEST_FALLBACK", "LOCAL_TEST_ROLLOUT")
 load("//rules/acls:local_test_starlark_resources.bzl", "LOCAL_TEST_STARLARK_RESOURCES_FALLBACK", "LOCAL_TEST_STARLARK_RESOURCES_ROLLOUT")
 load("//rules/acls:android_test_platform_rollout.bzl", "ANDROID_TEST_PLATFORM_FALLBACK", "ANDROID_TEST_PLATFORM_ROLLOUT")
-load("//rules/acls:sourceless_binary_rollout.bzl", "SOURCELESS_BINARY_FALLBACK", "SOURCELESS_BINARY_ROLLOUT")
 load("//rules/acls:test_to_instrument_test_rollout.bzl", "TEST_TO_INSTRUMENT_TEST_FALLBACK", "TEST_TO_INSTRUMENT_TEST_ROLLOUT")
 load(
     "//rules/acls:partial_jetification_targets.bzl",
     "PARTIAL_JETIFICATION_TARGETS_FALLBACK",
     "PARTIAL_JETIFICATION_TARGETS_ROLLOUT",
 )
-load("//rules/acls:kt_android_library_rollout.bzl", "KT_ANDROID_LIBRARY_FALLBACK", "KT_ANDROID_LIBRARY_ROLLOUT")
 load("//rules/acls:android_instrumentation_test_manifest_check_rollout.bzl", "ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_FALLBACK", "ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_ROLLOUT")
 load("//rules/acls:android_instrumentation_test_prebuilt_test_apk.bzl", "ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_FALLBACK", "ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_ROLLOUT")
-load("//rules/acls:android_rules_with_kt_rollout.bzl", "ANDROID_RULES_WITH_KT_FALLBACK", "ANDROID_RULES_WITH_KT_ROLLOUT")
 load("//rules/acls:baseline_profiles_rollout.bzl", "BASELINE_PROFILES_ROLLOUT")
 load("//rules/acls:enforce_min_sdk_floor_rollout.bzl", "ENFORCE_MIN_SDK_FLOOR_FALLBACK", "ENFORCE_MIN_SDK_FLOOR_ROLLOUT")
 load("//rules/acls:android_apk_to_bundle_features_lockdown.bzl", "ANDROID_APK_TO_BUNDLE_FEATURES")
 load("//rules/acls:android_local_test_jdk_sts_rollout.bzl", "ANDROID_LOCAL_TEST_JDK_STS_FALLBACK", "ANDROID_LOCAL_TEST_JDK_STS_ROLLOUT")
+load("//rules/acls:shared_library_resource_linking.bzl", "SHARED_LIBRARY_RESOURCE_LINKING_ALLOWLIST")
+load("//rules/acls:android_binary_starlark_dex_desugar_proguard.bzl", "ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_FALLBACK", "ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_ROLLOUT")
+load("//rules/acls:android_binary_min_sdk_version_attribute.bzl", "ANDROID_BINARY_MIN_SDK_VERSION_ATTRIBUTE_ALLOWLIST")
 
 def _in_aar_import_deps_checker(fqn):
     return not matches(fqn, AAR_IMPORT_DEPS_CHECKER_FALLBACK_DICT) and matches(fqn, AAR_IMPORT_DEPS_CHECKER_ROLLOUT_DICT)
@@ -179,9 +179,6 @@ def _in_local_test_starlark_resources(fqn):
 def _in_android_test_platform_rollout(fqn):
     return not matches(fqn, ANDROID_TEST_PLATFORM_FALLBACK_DICT) and matches(fqn, ANDROID_TEST_PLATFORM_ROLLOUT_DICT)
 
-def _in_sourceless_binary_rollout(fqn):
-    return not matches(fqn, SOURCELESS_BINARY_FALLBACK_DICT) and matches(fqn, SOURCELESS_BINARY_ROLLOUT_DICT)
-
 def _in_test_to_instrument_test_rollout(fqn):
     return not matches(fqn, TEST_TO_INSTRUMENT_TEST_FALLBACK_DICT) and matches(fqn, TEST_TO_INSTRUMENT_TEST_ROLLOUT_DICT)
 
@@ -191,17 +188,11 @@ def _in_allow_resource_conflicts(fqn):
 def _in_partial_jetification_targets(fqn):
     return not matches(fqn, PARTIAL_JETIFICATION_TARGETS_FALLBACK_DICT) and matches(fqn, PARTIAL_JETIFICATION_TARGETS_ROLLOUT_DICT)
 
-def _in_kt_android_library_rollout(fqn):
-    return not matches(fqn, KT_ANDROID_LIBRARY_FALLBACK_DICT) and matches(fqn, KT_ANDROID_LIBRARY_ROLLOUT_DICT)
-
 def _in_android_instrumentation_test_manifest_check_rollout(fqn):
     return not matches(fqn, ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_FALLBACK_DICT) and matches(fqn, ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_ROLLOUT_DICT)
 
 def _in_android_instrumentation_test_prebuilt_test_apk(fqn):
     return matches(fqn, ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_ROLLOUT_DICT) and not matches(fqn, ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_FALLBACK_DICT)
-
-def _in_android_rules_with_kt_rollout(fqn):
-    return not matches(fqn, ANDROID_RULES_WITH_KT_FALLBACK_DICT) and matches(fqn, ANDROID_RULES_WITH_KT_ROLLOUT_DICT)
 
 def _get_android_archive_exposed_package_allowlist(fqn):
     return ANDROID_ARCHIVE_EXPOSED_PACKAGE_ALLOWLIST.get(fqn, [])
@@ -220,6 +211,15 @@ def _get_android_archive_duplicate_class_allowlist(fqn):
 
 def _in_android_local_test_jdk_sts_rollout(fqn):
     return not matches(fqn, ANDROID_LOCAL_TEST_JDK_STS_FALLBACK_DICT) and matches(fqn, ANDROID_LOCAL_TEST_JDK_STS_ROLLOUT_DICT)
+
+def _in_shared_library_resource_linking_allowlist(fqn):
+    return matches(fqn, SHARED_LIBRARY_RESOURCE_LINKING_DICT)
+
+def _in_android_binary_starlark_dex_desugar_proguard(fqn):
+    return not matches(fqn, ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_FALLBACK_DICT) and matches(fqn, ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_ROLLOUT_DICT)
+
+def _in_android_binary_min_sdk_version_attribute_allowlist(fqn):
+    return matches(fqn, ANDROID_BINARY_MIN_SDK_VERSION_ATTRIBUTE_DICT)
 
 def make_dict(lst):
     """Do not use this method outside of acls directory."""
@@ -250,8 +250,6 @@ ANDROID_LINT_CHECKS_FALLBACK_DICT = make_dict(ANDROID_LINT_CHECKS_FALLBACK)
 ANDROID_LINT_CHECKS_ROLLOUT_DICT = make_dict(ANDROID_LINT_CHECKS_ROLLOUT)
 ANDROID_LINT_FALLBACK_DICT = make_dict(ANDROID_LINT_FALLBACK)
 ANDROID_LINT_ROLLOUT_DICT = make_dict(ANDROID_LINT_ROLLOUT)
-ANDROID_RULES_WITH_KT_ROLLOUT_DICT = make_dict(ANDROID_RULES_WITH_KT_ROLLOUT)
-ANDROID_RULES_WITH_KT_FALLBACK_DICT = make_dict(ANDROID_RULES_WITH_KT_FALLBACK)
 
 LINT_REGISTRY_FALLBACK_DICT = make_dict(LINT_REGISTRY_FALLBACK)
 LINT_REGISTRY_ROLLOUT_DICT = make_dict(LINT_REGISTRY_ROLLOUT)
@@ -278,15 +276,11 @@ LOCAL_TEST_STARLARK_RESOURCES_FALLBACK_DICT = make_dict(LOCAL_TEST_STARLARK_RESO
 LOCAL_TEST_STARLARK_RESOURCES_ROLLOUT_DICT = make_dict(LOCAL_TEST_STARLARK_RESOURCES_ROLLOUT)
 ANDROID_TEST_PLATFORM_FALLBACK_DICT = make_dict(ANDROID_TEST_PLATFORM_FALLBACK)
 ANDROID_TEST_PLATFORM_ROLLOUT_DICT = make_dict(ANDROID_TEST_PLATFORM_ROLLOUT)
-SOURCELESS_BINARY_FALLBACK_DICT = make_dict(SOURCELESS_BINARY_FALLBACK)
-SOURCELESS_BINARY_ROLLOUT_DICT = make_dict(SOURCELESS_BINARY_ROLLOUT)
 TEST_TO_INSTRUMENT_TEST_FALLBACK_DICT = make_dict(TEST_TO_INSTRUMENT_TEST_FALLBACK)
 TEST_TO_INSTRUMENT_TEST_ROLLOUT_DICT = make_dict(TEST_TO_INSTRUMENT_TEST_ROLLOUT)
 ALLOW_RESOURCE_CONFLICTS_DICT = make_dict(ALLOW_RESOURCE_CONFLICTS)
 PARTIAL_JETIFICATION_TARGETS_ROLLOUT_DICT = make_dict(PARTIAL_JETIFICATION_TARGETS_ROLLOUT)
 PARTIAL_JETIFICATION_TARGETS_FALLBACK_DICT = make_dict(PARTIAL_JETIFICATION_TARGETS_FALLBACK)
-KT_ANDROID_LIBRARY_ROLLOUT_DICT = make_dict(KT_ANDROID_LIBRARY_ROLLOUT)
-KT_ANDROID_LIBRARY_FALLBACK_DICT = make_dict(KT_ANDROID_LIBRARY_FALLBACK)
 ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_ROLLOUT_DICT = make_dict(ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_ROLLOUT)
 ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_FALLBACK_DICT = make_dict(ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_FALLBACK)
 ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_ROLLOUT_DICT = make_dict(ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_ROLLOUT)
@@ -300,11 +294,18 @@ ANDROID_LOCAL_TEST_JDK_STS_FALLBACK_DICT = make_dict(ANDROID_LOCAL_TEST_JDK_STS_
 ANDROID_LOCAL_TEST_JDK_STS_ROLLOUT_DICT = make_dict(ANDROID_LOCAL_TEST_JDK_STS_ROLLOUT)
 DATABINDING_ALLOWED_DICT = make_dict(DATABINDING_ALLOWED)
 DATABINDING_DISALLOWED_DICT = make_dict(DATABINDING_DISALLOWED)
+SHARED_LIBRARY_RESOURCE_LINKING_DICT = make_dict(SHARED_LIBRARY_RESOURCE_LINKING_ALLOWLIST)
+ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_ROLLOUT_DICT = make_dict(ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_ROLLOUT)
+ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_FALLBACK_DICT = make_dict(ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_FALLBACK)
+ANDROID_BINARY_MIN_SDK_VERSION_ATTRIBUTE_DICT = make_dict(ANDROID_BINARY_MIN_SDK_VERSION_ATTRIBUTE_ALLOWLIST)
 
 def matches(fqn, dct):
     # Labels with workspace names ("@workspace//pkg:target") are not supported.
+    # For now, default external dependency ACLs to True to enable rollout features for all
+    # external users. See https://github.com/bazelbuild/rules_android/issues/68
+    # Note that this only affects Bazel builds with OSS rules_android.
     if fqn.startswith("@"):
-        return False
+        return True
 
     if not fqn.startswith("//"):
         fail("Fully qualified target should start with '//', got: " + fqn)
@@ -372,18 +373,18 @@ acls = struct(
     in_local_test_rollout = _in_local_test_rollout,
     in_local_test_starlark_resources = _in_local_test_starlark_resources,
     in_android_test_platform_rollout = _in_android_test_platform_rollout,
-    in_sourceless_binary_rollout = _in_sourceless_binary_rollout,
     in_test_to_instrument_test_rollout = _in_test_to_instrument_test_rollout,
     in_allow_resource_conflicts = _in_allow_resource_conflicts,
     in_partial_jetification_targets = _in_partial_jetification_targets,
-    in_kt_android_library_rollout = _in_kt_android_library_rollout,
     in_android_instrumentation_test_manifest_check_rollout = _in_android_instrumentation_test_manifest_check_rollout,
     in_android_instrumentation_test_prebuilt_test_apk = _in_android_instrumentation_test_prebuilt_test_apk,
-    in_android_rules_with_kt_rollout = _in_android_rules_with_kt_rollout,
     in_baseline_profiles_rollout = _in_baseline_profiles_rollout,
     in_enforce_min_sdk_floor_rollout = _in_enforce_min_sdk_floor_rollout,
     in_android_apk_to_bundle_features = _in_android_apk_to_bundle_features,
     in_android_local_test_jdk_sts_rollout = _in_android_local_test_jdk_sts_rollout,
+    in_shared_library_resource_linking_allowlist = _in_shared_library_resource_linking_allowlist,
+    in_android_binary_starlark_dex_desugar_proguard = _in_android_binary_starlark_dex_desugar_proguard,
+    in_android_binary_min_sdk_version_attribute_allowlist = _in_android_binary_min_sdk_version_attribute_allowlist,
 )
 
 # Visible for testing
