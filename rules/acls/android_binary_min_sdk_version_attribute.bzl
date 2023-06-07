@@ -1,4 +1,4 @@
-# Copyright 2020 The Bazel Authors. All rights reserved.
+# Copyright 2023 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Allow list for sourceless android_binary rollout"""
+"""Allowlist for setting new min_sdk_version on android_binary targets."""
 
-SOURCELESS_BINARY_ROLLOUT = [
-]
-
-SOURCELESS_BINARY_FALLBACK = [
+# keep sorted.
+ANDROID_BINARY_MIN_SDK_VERSION_ATTRIBUTE_ALLOWLIST = [
 ]
