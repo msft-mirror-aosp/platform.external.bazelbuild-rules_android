@@ -1,4 +1,4 @@
-# Copyright 2020 The Bazel Authors. All rights reserved.
+# Copyright 2022 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Allow list for b/144163743 - deprecated implicit exports."""
+"""Allowlist for android_archive targets to expose packages that would otherwise be restricted."""
 
-# These macros can create android_library targets with deps and no srcs with no way for
-# their users to control this.
-ANDROID_LIBRARY_IMPLICIT_EXPORTS_GENERATOR_FUNCTIONS = [
-]
-
-ANDROID_LIBRARY_IMPLICIT_EXPORTS = [
-]
+# Map of {"target": ["list", "of", "packages"]} which will be excluded from
+# exposed package checks.
+# keep sorted
+ANDROID_ARCHIVE_EXPOSED_PACKAGE_ALLOWLIST = {
+    "//test/rules/android_archive/java/com/testdata:archive_denied_package_allowlisted": ["androidx.test"],
+}
