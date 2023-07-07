@@ -26,6 +26,10 @@ load(
 ATTRS = _attrs.replace(
     _attrs.add(
         dict(
+            srcs = attr.label_list(
+                # TODO(timpeut): Set PropertyFlag direct_compile_time_input
+                allow_files = [".java", ".srcjar"],
+            ),
             deps = attr.label_list(
                 allow_files = True,
                 allow_rules = [
@@ -61,6 +65,9 @@ ATTRS = _attrs.replace(
             shrink_resources = _attrs.tristate.create(
                 default = _attrs.tristate.auto,
             ),
+            _java_toolchain = attr.label(
+                default = Label("//tools/jdk:toolchain_android_only"),
+            ),
             _defined_resource_files = attr.bool(default = False),
             _enable_manifest_merging = attr.bool(default = True),
             _cc_toolchain_split = attr.label(
@@ -77,6 +84,7 @@ ATTRS = _attrs.replace(
         ),
         _attrs.COMPILATION,
         _attrs.DATA_CONTEXT,
+        _attrs.ANDROID_TOOLCHAIN_ATTRS,
     ),
     # TODO(b/167599192): don't override manifest attr to remove .xml file restriction.
     manifest = attr.label(

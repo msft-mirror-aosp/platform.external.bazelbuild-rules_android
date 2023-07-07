@@ -171,7 +171,6 @@ def _process_resources(ctx, java_package, manifest_ctx, **unused_ctxs):
         # misbehavior on the Java side.
         fix_resource_transitivity = bool(ctx.attr.srcs),
         fix_export_exporting = acls.in_fix_export_exporting_rollout(str(ctx.label)),
-        propagate_resources = not ctx.attr._android_test_migration,
 
         # Tool and Processing related inputs
         aapt = get_android_toolchain(ctx).aapt2.files_to_run,
@@ -226,6 +225,8 @@ def _process_idl(ctx, **unused_sub_ctxs):
     )
 
 def _process_data_binding(ctx, java_package, resources_ctx, **unused_sub_ctxs):
+    if ctx.attr.enable_data_binding and not acls.in_databinding_allowed(str(ctx.label)):
+        fail("This target is not allowed to use databinding and enable_data_binding is True.")
     return ProviderInfo(
         name = "db_ctx",
         value = _data_binding.process(
