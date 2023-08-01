@@ -12,7 +12,7 @@ third_party {
     type: GIT
     value: "https://github.com/bazelbuild/rules_android"
   }
-  version: "0ba045398138d641fd8895bb08a6bd4bfa51d0f9"
-  last_upgrade_date { year: 2023 month: 5 day: 31 }
+  version: "d1dca942348973d99c9e33247f17fb5f1ef92732"
+  last_upgrade_date { year: 2023 month: 7 day: 25 }
   license_type: NOTICE
 }

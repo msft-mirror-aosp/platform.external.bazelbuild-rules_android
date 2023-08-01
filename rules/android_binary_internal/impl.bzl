@@ -15,6 +15,7 @@
 """Implementation."""
 
 load("//rules:acls.bzl", "acls")
+load("//rules:baseline_profiles.bzl", _baseline_profiles = "baseline_profiles")
 load("//rules:common.bzl", "common")
 load("//rules:data_binding.bzl", "data_binding")
 load("//rules:java.bzl", "java")
@@ -32,6 +33,7 @@ load(
 load("//rules:providers.bzl", "StarlarkAndroidDexInfo", "StarlarkApkInfo")
 load("//rules:dex.bzl", _dex = "dex")
 load("//rules:desugar.bzl", _desugar = "desugar")
+load("//rules:dex_desugar_aspect.bzl", _get_dex_desugar_aspect_deps = "get_aspect_deps")
 
 def _process_manifest(ctx, **unused_ctxs):
     manifest_ctx = _resources.bump_min_sdk(
@@ -187,22 +189,22 @@ def _process_build_info(_unused_ctx, **unused_ctxs):
     return ProviderInfo(
         name = "build_info_ctx",
         value = struct(
-            build_info_files = depset(),
             deploy_manifest_lines = [],
-            extra_build_info = "",
             providers = [],
         ),
     )
 
-def _process_dex(ctx, packaged_resources_ctx, jvm_ctx, deploy_ctx, **_unused_ctxs):
+def _process_dex(ctx, stamp_ctx, packaged_resources_ctx, jvm_ctx, deploy_ctx, **_unused_ctxs):
     providers = []
     classes_dex_zip = None
+    dex_info = None
     final_classes_dex_zip = None
     deploy_jar = deploy_ctx.deploy_jar
     is_binary_optimized = len(ctx.attr.proguard_specs) > 0
 
     if acls.in_android_binary_starlark_dex_desugar_proguard(str(ctx.label)):
-        runtime_jars = jvm_ctx.java_info.runtime_output_jars + [packaged_resources_ctx.class_jar]
+        java_info = java_common.merge([jvm_ctx.java_info, stamp_ctx.java_info]) if stamp_ctx.java_info else jvm_ctx.java_info
+        runtime_jars = java_info.runtime_output_jars + [packaged_resources_ctx.class_jar]
         forbidden_dexopts = ctx.fragments.android.get_target_dexopts_that_prevent_incremental_dexing
         java8_legacy_dex, java8_legacy_dex_map = _dex.get_java8_legacy_dex_and_map(
             ctx,
@@ -224,19 +226,19 @@ def _process_dex(ctx, packaged_resources_ctx, jvm_ctx, deploy_ctx, **_unused_ctx
         if incremental_dexing:
             classes_dex_zip = _dex.process_incremental_dexing(
                 ctx,
-                deps = ctx.attr.deps,
+                deps = _get_dex_desugar_aspect_deps(ctx),
                 dexopts = ctx.attr.dexopts,
                 runtime_jars = runtime_jars,
                 main_dex_list = ctx.file.main_dex_list,
                 min_sdk_version = ctx.attr.min_sdk_version,
-                java_info = jvm_ctx.java_info,
+                java_info = java_info,
                 desugar_dict = deploy_ctx.desugar_dict,
                 dexbuilder = get_android_toolchain(ctx).dexbuilder.files_to_run,
                 dexmerger = get_android_toolchain(ctx).dexmerger.files_to_run,
             )
 
         if ctx.fragments.android.desugar_java8_libs and classes_dex_zip.extension == "zip":
-            final_classes_dex_zip = _dex.get_dx_artifact(ctx, "final_classes_dex_zip")
+            final_classes_dex_zip = _dex.get_dx_artifact(ctx, "final_classes_dex.zip")
             _dex.append_java8_legacy_dex(
                 ctx,
                 output = final_classes_dex_zip,
@@ -247,34 +249,36 @@ def _process_dex(ctx, packaged_resources_ctx, jvm_ctx, deploy_ctx, **_unused_ctx
         else:
             final_classes_dex_zip = classes_dex_zip
 
-        providers.append(
-            AndroidDexInfo(
-                deploy_jar = deploy_jar,
-                final_classes_dex_zip = final_classes_dex_zip,
-                java_resource_jar = deploy_jar,
-            ),
+        dex_info = AndroidDexInfo(
+            deploy_jar = deploy_jar,
+            final_classes_dex_zip = final_classes_dex_zip,
+            java_resource_jar = deploy_jar,
         )
+        providers.append(dex_info)
 
     return ProviderInfo(
         name = "dex_ctx",
-        value = struct(providers = providers),
+        value = struct(
+            dex_info = dex_info,
+            providers = providers,
+        ),
     )
 
-def _process_deploy_jar(ctx, packaged_resources_ctx, jvm_ctx, build_info_ctx, **unused_ctx):
+def _process_deploy_jar(ctx, stamp_ctx, packaged_resources_ctx, jvm_ctx, build_info_ctx, **_unused_ctxs):
     deploy_jar, desugar_dict = None, {}
 
     if acls.in_android_binary_starlark_dex_desugar_proguard(str(ctx.label)):
         java_toolchain = common.get_java_toolchain(ctx)
-        java_info = jvm_ctx.java_info
-        info = _dex.merge_infos(utils.collect_providers(StarlarkAndroidDexInfo, ctx.attr.deps))
+        java_info = java_common.merge([jvm_ctx.java_info, stamp_ctx.java_info]) if stamp_ctx.java_info else jvm_ctx.java_info
+        info = _dex.merge_infos(utils.collect_providers(StarlarkAndroidDexInfo, _get_dex_desugar_aspect_deps(ctx)))
         incremental_dexopts = _dex.incremental_dexopts(ctx.attr.dexopts, ctx.fragments.android.get_dexopts_supported_in_incremental_dexing)
         dex_archives = info.dex_archives_dict.get("".join(incremental_dexopts), depset()).to_list()
-
+        binary_runtime_jars = java_info.runtime_output_jars + [packaged_resources_ctx.class_jar]
         if ctx.fragments.android.desugar_java8:
             desugared_jars = []
             desugar_dict = {d.jar: d.desugared_jar for d in dex_archives}
 
-            for jar in java_info.runtime_output_jars + [packaged_resources_ctx.class_jar]:
+            for jar in binary_runtime_jars:
                 desugared_jar = ctx.actions.declare_file(ctx.label.name + "/" + jar.basename + "_desugared.jar")
                 _desugar.desugar(
                     ctx,
@@ -289,15 +293,12 @@ def _process_deploy_jar(ctx, packaged_resources_ctx, jvm_ctx, build_info_ctx, **
                 desugar_dict[jar] = desugared_jar
 
             for jar in java_info.transitive_runtime_jars.to_list():
-                if jar in desugar_dict and desugar_dict[jar]:
-                    desugared_jars.append(desugar_dict[jar])
+                if jar in desugar_dict:
+                    desugared_jars.append(desugar_dict[jar] if desugar_dict[jar] else jar)
 
             runtime_jars = depset(desugared_jars)
         else:
-            runtime_jars = depset(transitive = [
-                java_info.runtime_output_jars,
-                java_info.transitive_runtime_jars,
-            ])
+            runtime_jars = depset(binary_runtime_jars, transitive = [java_info.transitive_runtime_jar])
 
         output = ctx.actions.declare_file(ctx.label.name + "_migrated_deploy.jar")
         deploy_jar = java.create_deploy_jar(
@@ -305,10 +306,8 @@ def _process_deploy_jar(ctx, packaged_resources_ctx, jvm_ctx, build_info_ctx, **
             output = output,
             runtime_jars = runtime_jars,
             java_toolchain = java_toolchain,
-            target_name = ctx.label.name,
-            build_info_files = build_info_ctx.build_info_files,
+            build_target = ctx.label.name,
             deploy_manifest_lines = build_info_ctx.deploy_manifest_lines,
-            extra_build_info = build_info_ctx.extra_build_info,
         )
 
     return ProviderInfo(
@@ -358,6 +357,32 @@ def _is_test_binary(ctx):
     """
     return ctx.attr.testonly or ctx.attr.instruments or str(ctx.label).find("/javatests/") >= 0
 
+def _process_baseline_profiles(ctx, dex_ctx, **_unused_ctxs):
+    providers = []
+    if (ctx.attr.generate_art_profile and
+        acls.in_android_binary_starlark_dex_desugar_proguard(str(ctx.label))):
+        transitive_profiles = depset(
+            transitive = [
+                profile_provider.files
+                for profile_provider in utils.collect_providers(
+                    BaselineProfileProvider,
+                    ctx.attr.deps,
+                )
+            ],
+        )
+        if transitive_profiles:
+            providers.append(
+                _baseline_profiles.process(
+                    ctx,
+                    dex_ctx.dex_info.final_classes_dex_zip,
+                    transitive_profiles,
+                ),
+            )
+    return ProviderInfo(
+        name = "bp_ctx",
+        value = struct(providers = providers),
+    )
+
 # Order dependent, as providers will not be available to downstream processors
 # that may depend on the provider. Iteration order for a dictionary is based on
 # insertion.
@@ -373,6 +398,7 @@ PROCESSORS = dict(
     BuildInfoProcessor = _process_build_info,
     DeployJarProcessor = _process_deploy_jar,
     DexProcessor = _process_dex,
+    BaselineProfilesProcessor = _process_baseline_profiles,
 )
 
 _PROCESSING_PIPELINE = processing_pipeline.make_processing_pipeline(
