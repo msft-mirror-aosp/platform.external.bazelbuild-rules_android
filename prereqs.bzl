@@ -22,6 +22,15 @@ def rules_android_prereqs():
     """Downloads prerequisite repositories for rules_android."""
     maybe(
         http_archive,
+        name = "rules_java",
+        urls = [
+            "https://github.com/bazelbuild/rules_java/releases/download/6.0.0/rules_java-6.0.0.tar.gz",
+        ],
+        sha256 = "469b7f3b580b4fcf8112f4d6d0d5a4ce8e1ad5e21fee67d8e8335d5f8b3debab",
+    )
+
+    maybe(
+        http_archive,
         name = "rules_jvm_external",
         strip_prefix = "rules_jvm_external-fa73b1a8e4846cee88240d0019b8f80d39feb1c3",
         sha256 = "7e13e48b50f9505e8a99cc5a16c557cbe826e9b68d733050cd1e318d69f94bb5",
@@ -102,5 +111,26 @@ def rules_android_prereqs():
             "https://github.com/abseil/abseil-py/archive/refs/tags/v1.4.0.tar.gz",
         ],
         strip_prefix = "abseil-py-1.4.0",
+    )
+
+    maybe(
+        http_archive,
+        name = "rules_proto",
+        sha256 = "dc3fb206a2cb3441b485eb1e423165b231235a1ea9b031b4433cf7bc1fa460dd",
+        strip_prefix = "rules_proto-5.3.0-21.7",
+        urls = [
+            "https://github.com/bazelbuild/rules_proto/archive/refs/tags/5.3.0-21.7.tar.gz",
+        ],
+    )
+
+    maybe(
+      http_archive,
+      name = "rules_python",
+      strip_prefix = "rules_python-0.23.1",
+      urls = [
+          "https://github.com/bazelbuild/rules_python/releases/download/0.23.1/rules_python-0.23.1.tar.gz",
+          "https://mirror.bazel.build/github.com/bazelbuild/rules_python/releases/download/0.23.1/rules_python-0.23.1.tar.gz",
+      ],
+      sha256 = "84aec9e21cc56fbc7f1335035a71c850d1b9b5cc6ff497306f84cced9a769841",
     )
 
