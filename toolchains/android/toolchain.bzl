@@ -160,15 +160,20 @@ _ATTRS = dict(
     java_stub = attr.label(
         allow_files = True,
         # used in android_local_test
-        default = "@androidsdk//:fail",  # TODO: java_stub_template.txt gets embedded in bazel's jar, need a copy in @bazel_tools or similar
+        default = "@bazel_tools//tools/java:java_stub_template.txt",
     ),
     jdeps_tool = attr.label(
         allow_files = True,
         cfg = "exec",
         # used in android_local_test
-        default = "@androidsdk//:fail",  # TODO: "//src/tools/jdeps", needs Go
+        default = "//src/tools/jdeps",
         executable = True,
     ),
+    merge_baseline_profiles_tool = attr.label(
+      default = "@androidsdk//:fail",
+      cfg = "exec",
+      executable = True
+      ),
     object_method_rewriter = attr.label(
         allow_files = True,
         cfg = "exec",
@@ -178,6 +183,11 @@ _ATTRS = dict(
     proguard_allowlister = attr.label(
         cfg = "exec",
         default = "@bazel_tools//tools/jdk:proguard_whitelister",
+        executable = True,
+    ),
+    profgen = attr.label(
+        default =  "@androidsdk//:fail",
+        cfg = "exec",
         executable = True,
     ),
     proto_map_generator = attr.label(
@@ -220,6 +230,12 @@ _ATTRS = dict(
     zip_filter = attr.label(
         cfg = "exec",
         default = "@bazel_tools//tools/android:zip_filter",
+        executable = True,
+    ),
+    zipper = attr.label(
+        allow_single_file = True,
+        cfg = "exec",
+        default = "@bazel_tools//tools/zip:zipper",
         executable = True,
     ),
     dex_zips_merger = attr.label(

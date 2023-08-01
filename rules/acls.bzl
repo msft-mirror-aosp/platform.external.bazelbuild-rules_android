@@ -71,12 +71,14 @@ load(
 load("//rules/acls:android_instrumentation_test_manifest_check_rollout.bzl", "ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_FALLBACK", "ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_ROLLOUT")
 load("//rules/acls:android_instrumentation_test_prebuilt_test_apk.bzl", "ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_FALLBACK", "ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_ROLLOUT")
 load("//rules/acls:baseline_profiles_rollout.bzl", "BASELINE_PROFILES_ROLLOUT")
+load("//rules/acls:baseline_profiles_optimizer_integration.bzl", "BASELINE_PROFILES_OPTIMIZER_INTEGRATION")
 load("//rules/acls:enforce_min_sdk_floor_rollout.bzl", "ENFORCE_MIN_SDK_FLOOR_FALLBACK", "ENFORCE_MIN_SDK_FLOOR_ROLLOUT")
 load("//rules/acls:android_apk_to_bundle_features_lockdown.bzl", "ANDROID_APK_TO_BUNDLE_FEATURES")
 load("//rules/acls:android_local_test_jdk_sts_rollout.bzl", "ANDROID_LOCAL_TEST_JDK_STS_FALLBACK", "ANDROID_LOCAL_TEST_JDK_STS_ROLLOUT")
 load("//rules/acls:shared_library_resource_linking.bzl", "SHARED_LIBRARY_RESOURCE_LINKING_ALLOWLIST")
 load("//rules/acls:android_binary_starlark_dex_desugar_proguard.bzl", "ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_FALLBACK", "ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_ROLLOUT")
 load("//rules/acls:android_binary_min_sdk_version_attribute.bzl", "ANDROID_BINARY_MIN_SDK_VERSION_ATTRIBUTE_ALLOWLIST")
+load("//rules/acls:proguard_apply_mapping.bzl", "ALLOW_PROGUARD_APPLY_MAPPING")
 
 def _in_aar_import_deps_checker(fqn):
     return not matches(fqn, AAR_IMPORT_DEPS_CHECKER_FALLBACK_DICT) and matches(fqn, AAR_IMPORT_DEPS_CHECKER_ROLLOUT_DICT)
@@ -200,6 +202,9 @@ def _get_android_archive_exposed_package_allowlist(fqn):
 def _in_baseline_profiles_rollout(fqn):
     return matches(fqn, BASELINE_PROFILES_ROLLOUT)
 
+def _in_baseline_profiles_optimizer_integration(fqn):
+    return matches(fqn, BASELINE_PROFILES_OPTIMIZER_INTEGRATION)
+
 def _in_enforce_min_sdk_floor_rollout(fqn):
     return not matches(fqn, ENFORCE_MIN_SDK_FLOOR_FALLBACK_DICT) and matches(fqn, ENFORCE_MIN_SDK_FLOOR_ROLLOUT_DICT)
 
@@ -220,6 +225,9 @@ def _in_android_binary_starlark_dex_desugar_proguard(fqn):
 
 def _in_android_binary_min_sdk_version_attribute_allowlist(fqn):
     return matches(fqn, ANDROID_BINARY_MIN_SDK_VERSION_ATTRIBUTE_DICT)
+
+def _in_allow_proguard_apply_mapping(fqn):
+    return matches(fqn, ALLOW_PROGUARD_APPLY_MAPPING_DICT)
 
 def make_dict(lst):
     """Do not use this method outside of acls directory."""
@@ -286,6 +294,7 @@ ANDROID_INSTRUMENTATION_TEST_MANIFEST_CHECK_FALLBACK_DICT = make_dict(ANDROID_IN
 ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_ROLLOUT_DICT = make_dict(ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_ROLLOUT)
 ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_FALLBACK_DICT = make_dict(ANDROID_INSTRUMENTATION_TEST_PREBUILT_TEST_APK_FALLBACK)
 BASELINE_PROFILES_ROLLOUT_DICT = make_dict(BASELINE_PROFILES_ROLLOUT)
+BASELINE_PROFILES_OPTIMIZER_INTEGRATION_DICT = make_dict(BASELINE_PROFILES_OPTIMIZER_INTEGRATION)
 ENFORCE_MIN_SDK_FLOOR_ROLLOUT_DICT = make_dict(ENFORCE_MIN_SDK_FLOOR_ROLLOUT)
 ENFORCE_MIN_SDK_FLOOR_FALLBACK_DICT = make_dict(ENFORCE_MIN_SDK_FLOOR_FALLBACK)
 ANDROID_APK_TO_BUNDLE_FEATURES_DICT = make_dict(ANDROID_APK_TO_BUNDLE_FEATURES)
@@ -298,6 +307,7 @@ SHARED_LIBRARY_RESOURCE_LINKING_DICT = make_dict(SHARED_LIBRARY_RESOURCE_LINKING
 ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_ROLLOUT_DICT = make_dict(ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_ROLLOUT)
 ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_FALLBACK_DICT = make_dict(ANDROID_BINARY_STARLARK_DEX_DESUGAR_PROGUARD_FALLBACK)
 ANDROID_BINARY_MIN_SDK_VERSION_ATTRIBUTE_DICT = make_dict(ANDROID_BINARY_MIN_SDK_VERSION_ATTRIBUTE_ALLOWLIST)
+ALLOW_PROGUARD_APPLY_MAPPING_DICT = make_dict(ALLOW_PROGUARD_APPLY_MAPPING)
 
 def matches(fqn, dct):
     # Labels with workspace names ("@workspace//pkg:target") are not supported.
@@ -379,12 +389,14 @@ acls = struct(
     in_android_instrumentation_test_manifest_check_rollout = _in_android_instrumentation_test_manifest_check_rollout,
     in_android_instrumentation_test_prebuilt_test_apk = _in_android_instrumentation_test_prebuilt_test_apk,
     in_baseline_profiles_rollout = _in_baseline_profiles_rollout,
+    in_baseline_profiles_optimizer_integration = _in_baseline_profiles_optimizer_integration,
     in_enforce_min_sdk_floor_rollout = _in_enforce_min_sdk_floor_rollout,
     in_android_apk_to_bundle_features = _in_android_apk_to_bundle_features,
     in_android_local_test_jdk_sts_rollout = _in_android_local_test_jdk_sts_rollout,
     in_shared_library_resource_linking_allowlist = _in_shared_library_resource_linking_allowlist,
     in_android_binary_starlark_dex_desugar_proguard = _in_android_binary_starlark_dex_desugar_proguard,
     in_android_binary_min_sdk_version_attribute_allowlist = _in_android_binary_min_sdk_version_attribute_allowlist,
+    in_allow_proguard_apply_mapping = _in_allow_proguard_apply_mapping,
 )
 
 # Visible for testing
