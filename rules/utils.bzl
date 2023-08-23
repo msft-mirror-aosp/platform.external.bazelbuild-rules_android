@@ -16,7 +16,8 @@
 
 load(":providers.bzl", "FailureInfo")
 
-ANDROID_TOOLCHAIN_TYPE = "//toolchains/android:toolchain_type"
+# AOSP only change
+ANDROID_TOOLCHAIN_TYPE = "@rules_android//toolchains/android:toolchain_type"
 
 _CUU = "\033[A"
 _EL = "\033[K"
