@@ -119,6 +119,7 @@ _PACKAGED_CLASS_JAR = "class_jar"
 _PACKAGED_VALIDATION_RESULT = "validation_result"
 _RESOURCE_MINSDK_PROGUARD_CONFIG = "resource_minsdk_proguard_config"
 _RESOURCE_PROGUARD_CONFIG = "resource_proguard_config"
+_ANDROID_APPLICATION_RESOURCE = "android_application_resource"
 
 _ResourcesPackageContextInfo = provider(
     "Packaged resources context object",
@@ -132,6 +133,7 @@ _ResourcesPackageContextInfo = provider(
         _RESOURCE_MINSDK_PROGUARD_CONFIG: "Resource minSdkVersion proguard config",
         _RESOURCE_PROGUARD_CONFIG: "Resource proguard config",
         _PROVIDERS: "The list of all providers to propagate.",
+        _ANDROID_APPLICATION_RESOURCE: "The AndroidApplicationResourceInfo provider.",
     },
 )
 
@@ -210,6 +212,7 @@ def _add_g3itr(
         outputs = [out_manifest],
         mnemonic = "AddG3ITRStarlark",
         progress_message = "Adding G3ITR to test manifest for %s" % ctx.label,
+        toolchain = None,
     )
 
 def _get_legacy_mergee_manifests(resources_infos):
@@ -273,6 +276,7 @@ echo "$SORTED" >> $3
 """,
         arguments = [manifest_args, args, manifest_params.path],
         outputs = [manifest_params],
+        toolchain = None,
     )
     args = ctx.actions.args()
     args.add(manifest_params, format = "--flagfile=%s")
@@ -284,6 +288,7 @@ echo "$SORTED" >> $3
         outputs = [out_merged_manifest],
         mnemonic = "StarlarkLegacyAndroidManifestMerger",
         progress_message = "Merging Android Manifests",
+        toolchain = None,
     )
 
 def _make_databinding_outputs(
@@ -343,6 +348,7 @@ def _fix_databinding_compiled_resources(
         inputs = [compiled_resources],
         tools = [zip_tool],
         arguments = [compiled_resources.path, out_compiled_resources.path, zip_tool.executable.path],
+        toolchain = None,
         command = """#!/bin/bash
 set -e
 
@@ -461,7 +467,8 @@ def _package(
         xsltproc = None,
         instrument_xslt = None,
         busybox = None,
-        host_javabase = None):
+        host_javabase = None,
+        add_application_resource_info_to_providers = True):
     """Package resources for top-level rules.
 
     Args:
@@ -513,6 +520,7 @@ def _package(
       minsdk_proguard_config: Optional file. Proguard config for the minSdkVersion to include in the
         returned resource context.
       aapt: FilesToRunProvider. The aapt executable or FilesToRunProvider.
+      has_local_proguard_specs: If the target has proguard specs.
       android_jar: File. The Android jar.
       legacy_merger: FilesToRunProvider. The legacy manifest merger executable.
       xsltproc: FilesToRunProvider. The xsltproc executable or
@@ -522,6 +530,8 @@ def _package(
       busybox: FilesToRunProvider. The ResourceBusyBox executable or
         FilesToRunprovider
       host_javabase: A Target. The host javabase.
+      add_application_resource_info_to_providers: boolean. Whether to add the
+          AndroidApplicationResourceInfo provider to the list of providers for this processor.
 
     Returns:
       A ResourcesPackageContextInfo containing packaged resource artifacts and
@@ -774,7 +784,7 @@ def _package(
         transitive_resource_apks = depset(),
     ))
 
-    packaged_resources_ctx[_PROVIDERS].append(AndroidApplicationResourceInfo(
+    android_application_resource_info = AndroidApplicationResourceInfo(
         resource_apk = resource_apk,
         resource_java_src_jar = r_java,
         resource_java_class_jar = class_jar,
@@ -785,7 +795,11 @@ def _package(
         resources_zip = resource_files_zip,
         databinding_info = data_binding_layout_info,
         should_compile_java_srcs = should_compile_java_srcs,
-    ))
+    )
+    packaged_resources_ctx[_ANDROID_APPLICATION_RESOURCE] = android_application_resource_info
+    if add_application_resource_info_to_providers:
+        packaged_resources_ctx[_PROVIDERS].append(android_application_resource_info)
+
     return _ResourcesPackageContextInfo(**packaged_resources_ctx)
 
 def _liteparse(ctx, out_r_pb, resource_files, android_kit):
@@ -811,6 +825,7 @@ def _liteparse(ctx, out_r_pb, resource_files, android_kit):
         outputs = [out_r_pb],
         mnemonic = "ResLiteParse",
         progress_message = "Lite parse Android Resources %s" % ctx.label,
+        toolchain = None,
     )
 
 def _fastr(ctx, r_pbs, package, manifest, android_kit):
@@ -1070,6 +1085,7 @@ def _bump_min_sdk(
         arguments = [args],
         mnemonic = "BumpMinSdkFloor",
         progress_message = "Bumping up AndroidManifest min SDK %s" % str(ctx.label),
+        toolchain = None,
     )
     manifest_ctx[_PROCESSED_MANIFEST] = out_manifest
 
@@ -1120,6 +1136,7 @@ def _set_default_min_sdk(
         arguments = [args],
         mnemonic = "SetDefaultMinSdkFloor",
         progress_message = "Setting AndroidManifest min SDK to default %s" % str(ctx.label),
+        toolchain = None,
     )
     manifest_ctx[_PROCESSED_MANIFEST] = out_manifest
 
@@ -1164,6 +1181,7 @@ def _validate_min_sdk(
         arguments = [args],
         mnemonic = "ValidateMinSdkFloor",
         progress_message = "Validating AndroidManifest min SDK %s" % str(ctx.label),
+        toolchain = None,
     )
     manifest_validation_ctx[_VALIDATION_OUTPUTS].append(log)
 
@@ -1894,6 +1912,7 @@ resources = struct(
     set_default_min_sdk = _set_default_min_sdk,
 
     # Exposed for android_binary
+    is_resource_shrinking_enabled = _is_resource_shrinking_enabled,
     validate_min_sdk = _validate_min_sdk,
 
     # Exposed for android_library, aar_import, and android_binary

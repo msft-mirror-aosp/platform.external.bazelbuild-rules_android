@@ -103,6 +103,9 @@ ATTRS = _attrs.replace(
             incremental_dexing = _attrs.tristate.create(
                 default = _attrs.tristate.auto,
             ),
+            proguard_generate_mapping = attr.bool(default = False),
+            proguard_optimization_passes = attr.int(),
+            proguard_apply_mapping = attr.label(allow_single_file = True),
             _java_toolchain = attr.label(
                 default = Label("//tools/jdk:toolchain_android_only"),
             ),
@@ -113,10 +116,31 @@ ATTRS = _attrs.replace(
                 default = "@bazel_tools//tools/cpp:current_cc_toolchain",
                 aspects = [split_config_aspect],
             ),
+            _optimizing_dexer = attr.label(
+                cfg = "exec",
+                allow_single_file = True,
+                default = configuration_field(
+                    fragment = "android",
+                    name = "optimizing_dexer",
+                ),
+            ),
+            _desugared_java8_legacy_apis = attr.label(
+                default = Label("//tools/android:desugared_java8_legacy_apis"),
+                allow_single_file = True,
+            ),
+            _bytecode_optimizer = attr.label(
+                default = configuration_field(
+                    fragment = "java",
+                    name = "bytecode_optimizer",
+                ),
+                cfg = "exec",
+                executable = True,
+            ),
         ),
         _attrs.COMPILATION,
         _attrs.DATA_CONTEXT,
         _attrs.ANDROID_TOOLCHAIN_ATTRS,
+        _attrs.AUTOMATIC_EXEC_GROUPS_ENABLED,
     ),
     # TODO(b/167599192): don't override manifest attr to remove .xml file restriction.
     manifest = attr.label(

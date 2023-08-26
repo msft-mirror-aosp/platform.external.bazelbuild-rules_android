@@ -21,6 +21,7 @@ load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_depe
 load("@robolectric//bazel:robolectric.bzl", "robolectric_repositories")
 load("@rules_java//java:repositories.bzl", "rules_java_dependencies", "rules_java_toolchains")
 load("@rules_jvm_external//:defs.bzl", "maven_install")
+load("@rules_jvm_external//:specs.bzl", "maven")
 load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
 load("@rules_python//python:repositories.bzl", "py_repositories")
 
@@ -33,8 +34,27 @@ def rules_android_workspace():
     maven_install(
         name = "rules_android_maven",
         artifacts = [
-            "com.android.tools.build:bundletool:1.6.1",
-            "com.android.tools.build:gradle:8.0.1",
+            "androidx.privacysandbox.tools:tools:1.0.0-alpha05",
+            maven.artifact(
+                group = "androidx.privacysandbox.tools",
+                artifact = "tools-apipackager",
+                version = "1.0.0-alpha05",
+                exclusions = [
+                    # Alpha05 pulls in the lite version of protobuf library,
+                    # which doesn't have the JSON utils we need and clashes with
+                    # com.google.protobuf:protobuf-java-util.
+                    # This was fixed in AOSP, so this can be removed once
+                    # the packager releases a new version (>alpha05).
+                    "com.google.protobuf:protobuf-javalite",
+                ],
+            ),
+            "com.android.tools.build:bundletool:1.15.2",
+            "com.android.tools.build:gradle:8.2.0-alpha15",
+            "com.google.guava:guava:32.1.2-jre",
+            "com.google.protobuf:protobuf-java-util:3.9.2",
+            "com.google.truth:truth:1.1.5",
+            "info.picocli:picocli:4.7.4",
+            "junit:junit:4.13.2",
         ],
         repositories = [
             "https://maven.google.com",
@@ -64,10 +84,10 @@ def rules_android_workspace():
     )
 
     go_repository(
-      name = "org_golang_x_sync",
-      importpath = "golang.org/x/sync",
-      sum = "h1:5KslGYwFpkhGh+Q16bwMP3cOontH8FOep7tGV86Y7SQ=",
-      version = "v0.0.0-20210220032951-036812b2e83c",
+        name = "org_golang_x_sync",
+        importpath = "golang.org/x/sync",
+        sum = "h1:5KslGYwFpkhGh+Q16bwMP3cOontH8FOep7tGV86Y7SQ=",
+        version = "v0.0.0-20210220032951-036812b2e83c",
     )
 
     robolectric_repositories()

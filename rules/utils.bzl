@@ -16,6 +16,9 @@
 
 load(":providers.bzl", "FailureInfo")
 
+# AOSP only change
+ANDROID_TOOLCHAIN_TYPE = "@rules_android//toolchains/android:toolchain_type"
+
 _CUU = "\033[A"
 _EL = "\033[K"
 _DEFAULT = "\033[0m"
@@ -414,7 +417,7 @@ VALIDATION_OUT={validation_out}
     )
 
 def get_android_toolchain(ctx):
-    return ctx.toolchains["//toolchains/android:toolchain_type"]
+    return ctx.toolchains[ANDROID_TOOLCHAIN_TYPE]
 
 def get_android_sdk(ctx):
     if hasattr(ctx.fragments.android, "incompatible_use_toolchain_resolution") and ctx.fragments.android.incompatible_use_toolchain_resolution:
