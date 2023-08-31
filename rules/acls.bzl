@@ -94,7 +94,8 @@ def _in_aar_import_exports_r_java(fqn):
     return matches(fqn, AAR_IMPORT_EXPORTS_R_JAVA_DICT)
 
 def _in_aar_propagate_resources(fqn):
-    return not matches(fqn, AAR_PROPAGATE_RESOURCES_FALLBACK_DICT) and matches(fqn, AAR_PROPAGATE_RESOURCES_ROLLOUT_DICT)
+    # AOSP-only change.
+    return True
 
 def _in_android_archive_dogfood(fqn):
     return matches(fqn, ANDROID_ARCHIVE_DOGFOOD_DICT)
