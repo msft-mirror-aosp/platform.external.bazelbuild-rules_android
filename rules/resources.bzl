@@ -1878,7 +1878,6 @@ def _process_starlark(
 
     return resources_ctx
 
-
 def _process(
         ctx,
         manifest = None,
@@ -1942,7 +1941,6 @@ def _process(
         host_javabase = host_javabase,
         zip_tool = zip_tool,
     )
-
 
     if _VALIDATION_OUTPUTS not in out_ctx:
         out_ctx[_VALIDATION_OUTPUTS] = []
@@ -2095,6 +2093,8 @@ resources = struct(
 
     # Exposed for use in AOSP
     set_default_min_sdk = _set_default_min_sdk,
+    # TODO: b/301258446 - AOSP-only change, should upstream some equivalent.
+    ManifestContextInfo = _ManifestContextInfo,
 
     # Exposed for android_binary
     is_resource_shrinking_enabled = _is_resource_shrinking_enabled,
