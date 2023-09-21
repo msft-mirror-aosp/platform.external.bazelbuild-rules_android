@@ -14,6 +14,7 @@
 
 """Bazel Android Resources."""
 
+load("//rules:acls.bzl", "acls")
 load(":attrs.bzl", _attrs = "attrs")
 load(":busybox.bzl", _busybox = "busybox")
 load(":common.bzl", _common = "common")
@@ -30,7 +31,6 @@ load(
     _compilation_mode = "compilation_mode",
     _log = "log",
 )
-load("//rules:acls.bzl", "acls")
 
 # Depot-wide min SDK floor
 _DEPOT_MIN_SDK_FLOOR = 14
@@ -72,12 +72,14 @@ _INCORRECT_RESOURCE_LAYOUT_ERROR = (
 # Keys for manifest_values
 _VERSION_NAME = "versionName"
 _VERSION_CODE = "versionCode"
+_MIN_SDK_VERSION = "minSdkVersion"
 
 # Resources context attributes.
 _ASSETS_PROVIDER = "assets_provider"
 _DATA_BINDING_LAYOUT_INFO = "data_binding_layout_info"
 _DEFINES_RESOURCES = "defines_resources"
 _DIRECT_ANDROID_RESOURCES = "direct_android_resources"
+_MAIN_DEX_PROGUARD_CONFIG = "main_dex_proguard_config"
 _MERGED_MANIFEST = "merged_manifest"
 _PROVIDERS = "providers"
 _R_JAVA = "r_java"
@@ -117,6 +119,7 @@ _PACKAGED_FINAL_MANIFEST = "processed_manifest"
 _PACKAGED_RESOURCE_APK = "resources_apk"
 _PACKAGED_CLASS_JAR = "class_jar"
 _PACKAGED_VALIDATION_RESULT = "validation_result"
+_PACKAGED_R_TXT = "r_txt"
 _RESOURCE_MINSDK_PROGUARD_CONFIG = "resource_minsdk_proguard_config"
 _RESOURCE_PROGUARD_CONFIG = "resource_proguard_config"
 _ANDROID_APPLICATION_RESOURCE = "android_application_resource"
@@ -128,10 +131,12 @@ _ResourcesPackageContextInfo = provider(
         _PACKAGED_RESOURCE_APK: "ResourceApk.",
         _PACKAGED_CLASS_JAR: "R class jar.",
         _PACKAGED_VALIDATION_RESULT: "Validation result.",
+        _PACKAGED_R_TXT: "R text file",
         _R_JAVA: "JavaInfo for R.jar",
         _DATA_BINDING_LAYOUT_INFO: "Databinding layout info file.",
         _RESOURCE_MINSDK_PROGUARD_CONFIG: "Resource minSdkVersion proguard config",
         _RESOURCE_PROGUARD_CONFIG: "Resource proguard config",
+        _MAIN_DEX_PROGUARD_CONFIG: "Main dex proguard config",
         _PROVIDERS: "The list of all providers to propagate.",
         _ANDROID_APPLICATION_RESOURCE: "The AndroidApplicationResourceInfo provider.",
     },
@@ -139,11 +144,13 @@ _ResourcesPackageContextInfo = provider(
 
 # Manifest context attributes
 _PROCESSED_MANIFEST = "processed_manifest"
+_PROCESSED_MANIFEST_VALUES = "processed_manifest_values"
 
 _ManifestContextInfo = provider(
     "Manifest context object",
     fields = {
         _PROCESSED_MANIFEST: "The manifest after the min SDK has been changed as necessary.",
+        _PROCESSED_MANIFEST_VALUES: "Optional, dict of manifest values that have been processed.",
     },
 )
 
@@ -153,6 +160,36 @@ _ManifestValidationContextInfo = provider(
         _VALIDATION_OUTPUTS: "List of outputs given to OutputGroupInfo _validation group.",
     },
 )
+
+_SHRUNK_RESOURCE_APK = "resources_apk"
+_SHRUNK_RESOURCE_ZIP = "resources_zip"
+_RESOURCE_SHRINKER_LOG = "shrinker_log"
+_RESOURCE_OPTIMIZATION_CONFIG = "optimization_config"
+
+_ResourcesShrinkContextInfo = provider(
+    "Shrunk resources context object",
+    fields = {
+        _SHRUNK_RESOURCE_APK: "Shrunk resource apk.",
+        _SHRUNK_RESOURCE_ZIP: "Shrunk resource zip.",
+        _RESOURCE_SHRINKER_LOG: "Shrinker log.",
+        _RESOURCE_OPTIMIZATION_CONFIG: "Resource optimization config.",
+    },
+)
+
+_RESOURCE_PATH_SHORTENING_MAP = "path_shortening_map"
+_OPTIMIZED_RESOURCE_APK = "resources_apk"
+
+_ResourcesOptimizeContextInfo = provider(
+    "Optimized resources context object",
+    fields = {
+        _OPTIMIZED_RESOURCE_APK: "Optimized resource apk",
+        _RESOURCE_PATH_SHORTENING_MAP: "Path shortening map.",
+    },
+)
+
+# Feature which would enable AAPT2's resource name obfuscation optimization for android_binary
+# rules with resource shrinking and ProGuard enabled.
+_FEATURE_RESOURCE_NAME_OBFUSCATION = "resource_name_obfuscation"
 
 def _generate_dummy_manifest(
         ctx,
@@ -728,6 +765,8 @@ def _package(
     packaged_resources_ctx[_PACKAGED_VALIDATION_RESULT] = resource_files_zip
     packaged_resources_ctx[_RESOURCE_PROGUARD_CONFIG] = proguard_cfg
     packaged_resources_ctx[_RESOURCE_MINSDK_PROGUARD_CONFIG] = minsdk_proguard_config
+    packaged_resources_ctx[_MAIN_DEX_PROGUARD_CONFIG] = main_dex_proguard_cfg
+    packaged_resources_ctx[_PACKAGED_R_TXT] = r_txt
 
     # Fix class jar name because some tests depend on {label_name}_resources.jar being the suffix of
     # the path, with _common.PACKAGED_RESOURCES_SUFFIX removed from the label name.
@@ -1041,16 +1080,26 @@ def _validate_resources(resource_files = None):
             if res_type not in _RESOURCE_FOLDER_TYPES:
                 fail(_INCORRECT_RESOURCE_LAYOUT_ERROR % resource_file)
 
+def _process_manifest_values(ctx, manifest_values, min_sdk_floor = _DEPOT_MIN_SDK_FLOOR):
+    expanded_manifest_values = utils.expand_make_vars(ctx, manifest_values)
+    if _MIN_SDK_VERSION in expanded_manifest_values and min_sdk_floor > 0:
+        expanded_manifest_values[_MIN_SDK_VERSION] = str(
+            max(int(expanded_manifest_values[_MIN_SDK_VERSION]), min_sdk_floor),
+        )
+    return expanded_manifest_values
+
 def _bump_min_sdk(
         ctx,
-        manifest,
-        floor,
-        enforce_min_sdk_floor_tool):
+        manifest = None,
+        manifest_values = None,
+        floor = _DEPOT_MIN_SDK_FLOOR,
+        enforce_min_sdk_floor_tool = None):
     """Bumps the min SDK attribute of AndroidManifest to the floor.
 
     Args:
       ctx: The rules context.
       manifest: File. The AndroidManifest.xml file.
+      manifest_values: Dictionary. The optional manifest_values to process.
       floor: int. The min SDK floor. Manifest is unchanged if floor <= 0.
       enforce_min_sdk_floor_tool: FilesToRunProvider. The enforce_min_sdk_tool executable or
         FilesToRunprovider
@@ -1059,6 +1108,14 @@ def _bump_min_sdk(
       A dict containing _ManifestContextInfo provider fields.
     """
     manifest_ctx = {}
+
+    if manifest_values != None:
+        manifest_ctx[_PROCESSED_MANIFEST_VALUES] = _process_manifest_values(
+            ctx,
+            manifest_values,
+            floor,
+        )
+
     if not manifest or floor <= 0:
         manifest_ctx[_PROCESSED_MANIFEST] = manifest
         return _ManifestContextInfo(**manifest_ctx)
@@ -1892,6 +1949,133 @@ def _process(
 
     return _ResourcesProcessContextInfo(**out_ctx)
 
+def _shrink(
+        ctx,
+        resources_zip = None,
+        aapt = None,
+        android_jar = None,
+        r_txt = None,
+        shrunk_jar = None,
+        proguard_mapping = None,
+        busybox = None,
+        host_javabase = None):
+    """Shrinks the resources apk.
+
+    Args:
+        ctx: The context.
+        resources_zip: File. The input resources file zip containing the merged assets and resources to be shrunk.
+        aapt: FilesToRunProvider. The AAPT executable.
+        android_jar: File. The Android Jar.
+        r_txt: File. The resource IDs outputted by linking resources in text.
+        shrunk_jar: File. The proguarded output jar.
+        proguard_mapping: File. The Proguard Mapping file.
+        busybox: FilesToRunProvider. The ResourceBusyBox executable.
+        host_javabase: Target. The host javabase.
+
+    Returns:
+        A dict contaning all of the shrunk resource outputs.
+    """
+    shrunk_ctx = {
+        _SHRUNK_RESOURCE_APK: None,
+        _SHRUNK_RESOURCE_ZIP: None,
+        _RESOURCE_SHRINKER_LOG: None,
+        _RESOURCE_OPTIMIZATION_CONFIG: None,
+    }
+
+    out_apk = ctx.actions.declare_file(ctx.label.name + "_shrunk.ap_")
+    out_zip = ctx.actions.declare_file(ctx.label.name + "_files/resource_files_shrunk.zip")
+    out_log = ctx.actions.declare_file(ctx.label.name + "_files/resource_shrinker.log")
+    out_config = ctx.actions.declare_file(ctx.label.name + "_files/resource_optimization.cfg")
+    _busybox.shrink(
+        ctx,
+        out_apk,
+        out_zip,
+        out_log,
+        out_config,
+        resources_zip = resources_zip,
+        aapt = aapt,
+        android_jar = android_jar,
+        r_txt = r_txt,
+        shrunk_jar = shrunk_jar,
+        proguard_mapping = proguard_mapping,
+        debug = _compilation_mode.get(ctx) != _compilation_mode.OPT,
+        busybox = busybox,
+        host_javabase = host_javabase,
+    )
+
+    shrunk_ctx[_SHRUNK_RESOURCE_APK] = out_apk
+    shrunk_ctx[_SHRUNK_RESOURCE_ZIP] = out_zip
+    shrunk_ctx[_RESOURCE_SHRINKER_LOG] = out_log
+    shrunk_ctx[_RESOURCE_OPTIMIZATION_CONFIG] = out_config
+
+    return _ResourcesShrinkContextInfo(**shrunk_ctx)
+
+def _optimize(
+        ctx,
+        resources_apk = None,
+        resource_optimization_config = None,
+        is_resource_shrunk = False,
+        aapt = None,
+        busybox = None,
+        host_javabase = None):
+    """Optimizes the resources apk if necessary.
+
+    Args:
+        ctx: The context.
+        resources_apk: File. The resources apk.
+        resource_optimization_config: File. The resource optimization config outputted
+          by resource shrinking. It will only be used if resource name obfuscation is enabled.
+        is_resource_shrunk: Boolean. Whether the resources has been shrunk or not.
+        aapt: FilesToRunProvider. The AAPT executable.
+        busybox: FilesToRunProvider. The ResourceBusyBox executable.
+        host_javabase: Target. The host javabase.
+
+    Returns:
+        A dict contaning all of the optimized resource outputs.
+    """
+    optimize_ctx = {
+        _OPTIMIZED_RESOURCE_APK: None,
+        _RESOURCE_PATH_SHORTENING_MAP: None,
+    }
+
+    use_resource_path_shortening_map = _is_resource_path_shortening_enabled(ctx)
+    use_resource_optimization_config = _is_resource_name_obfuscation_enabled(ctx, is_resource_shrunk)
+
+    if not (use_resource_path_shortening_map or use_resource_optimization_config):
+        return _ResourcesOptimizeContextInfo(**optimize_ctx)
+
+    optimized_resource_apk = ctx.actions.declare_file(ctx.label.name + "optimized.ap_")
+    optimize_ctx[_OPTIMIZED_RESOURCE_APK] = optimized_resource_apk
+
+    resource_path_shortening_map = None
+    if use_resource_path_shortening_map:
+        resource_path_shortening_map = ctx.actions.declare_file(ctx.label.name + "_resource_paths.map")
+        optimize_ctx[_RESOURCE_PATH_SHORTENING_MAP] = resource_path_shortening_map
+
+    _busybox.optimize(
+        ctx,
+        out_apk = optimized_resource_apk,
+        in_apk = resources_apk,
+        resource_path_shortening_map = optimize_ctx[_RESOURCE_PATH_SHORTENING_MAP],
+        resource_optimization_config = resource_optimization_config if use_resource_optimization_config else None,
+        aapt = aapt,
+        busybox = busybox,
+        host_javabase = host_javabase,
+    )
+
+    return _ResourcesOptimizeContextInfo(**optimize_ctx)
+
+def _is_resource_path_shortening_enabled(ctx):
+    return ctx.fragments.android.use_android_resource_path_shortening and \
+           _compilation_mode.get(ctx) == _compilation_mode.OPT and \
+           not acls.in_android_binary_raw_access_to_resource_paths_allowlist(str(ctx.label))
+
+def _is_resource_name_obfuscation_enabled(ctx, is_resource_shrunk):
+    return (ctx.fragments.android.use_android_resource_name_obfuscation or
+            _FEATURE_RESOURCE_NAME_OBFUSCATION in ctx.features) and \
+           is_resource_shrunk and \
+           not acls.in_android_binary_raw_access_to_resource_paths_allowlist(str(ctx.label))
+
 resources = struct(
     process = _process,
     process_starlark = _process_starlark,
@@ -1905,8 +2089,9 @@ resources = struct(
     # Exposed for android_local_test and android_library
     generate_dummy_manifest = _generate_dummy_manifest,
 
-    # Exposed for android_library, aar_import, and android_binary
+    # Exposed for android_library, aar_import, android_local_test and android_binary
     bump_min_sdk = _bump_min_sdk,
+    process_manifest_values = _process_manifest_values,
 
     # Exposed for use in AOSP
     set_default_min_sdk = _set_default_min_sdk,
@@ -1914,6 +2099,8 @@ resources = struct(
     # Exposed for android_binary
     is_resource_shrinking_enabled = _is_resource_shrinking_enabled,
     validate_min_sdk = _validate_min_sdk,
+    shrink = _shrink,
+    optimize = _optimize,
 
     # Exposed for android_library, aar_import, and android_binary
     DEPOT_MIN_SDK_FLOOR = _DEPOT_MIN_SDK_FLOOR,
@@ -1926,4 +2113,6 @@ testing = struct(
     make_databinding_outputs = _make_databinding_outputs,
     ResourcesPackageContextInfo = _ResourcesPackageContextInfo,
     ResourcesProcessContextInfo = _ResourcesProcessContextInfo,
+    ResourcesShrinkContextInfo = _ResourcesShrinkContextInfo,
+    ResourcesOptimizeContextInfo = _ResourcesOptimizeContextInfo,
 )

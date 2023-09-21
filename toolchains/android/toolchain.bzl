@@ -137,9 +137,19 @@ _ATTRS = dict(
         default = Label("@bazel_tools//tools/android:dexbuilder"),
         executable = True,
     ),
+    dexbuilder_after_proguard = attr.label(
+        cfg = "exec",
+        default = Label("@bazel_tools//tools/android:dexbuilder_after_proguard"),
+        executable = True,
+    ),
     dexmerger = attr.label(
         cfg = "exec",
         default = Label("@bazel_tools//tools/android:dexmerger"),
+        executable = True,
+    ),
+    dexsharder = attr.label(
+        cfg = "exec",
+        default = Label("@bazel_tools//tools/android:dexsharder"),
         executable = True,
     ),
     enforce_min_sdk_floor_tool = attr.label(
@@ -232,8 +242,13 @@ _ATTRS = dict(
         default = "//src/tools/java/com/google/devtools/build/android/sandboxedsdktoolbox:sandboxed_sdk_toolbox_deploy.jar",
         executable = True,
     ),
+    shuffle_jars = attr.label(
+        cfg = "exec",
+        default = Label("@bazel_tools//tools/android:shuffle_jars"),
+        executable = True,
+    ),
     testsupport = attr.label(
-        default = "@androidsdk//:fail",
+        default = "@bazel_tools//tools/jdk:TestRunner",
     ),
     unzip_tool = attr.label(
         cfg = "exec",
@@ -275,6 +290,11 @@ _ATTRS = dict(
     build_java8_legacy_dex = attr.label(
         cfg = "exec",
         default = "@bazel_tools//tools/android:build_java8_legacy_dex",
+        executable = True,
+    ),
+    dex_list_obfuscator = attr.label(
+        cfg = "exec",
+        default = "@bazel_tools//tools/android:dex_list_obfuscator",
         executable = True,
     ),
 )
