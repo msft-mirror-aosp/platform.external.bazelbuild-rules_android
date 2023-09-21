@@ -43,6 +43,7 @@ bzl_library(
         "proguard.bzl",
         "providers.bzl",
         "resources.bzl",
+        "sandboxed_sdk_toolbox.bzl",
         "utils.bzl",
     ],
     visibility = ["//:__subpackages__"],
@@ -69,7 +70,6 @@ bzl_library(
     srcs = [
         "android_ndk_repository.bzl",
         "android_sdk.bzl",
-        "android_sdk_repository.bzl",
         "android_tools_defaults_jar.bzl",
         "baseline_profiles.bzl",
         "dex.bzl",
@@ -83,6 +83,7 @@ bzl_library(
         "//rules/aar_import:bzl",
         "//rules/android_library:bzl",
         "//rules/android_sandboxed_sdk:bzl",
+        "//rules/android_sdk_repository:bzl",
         "//rules/flags:bzl",
     ],
 )
