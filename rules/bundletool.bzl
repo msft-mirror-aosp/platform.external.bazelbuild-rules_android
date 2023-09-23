@@ -14,6 +14,11 @@
 
 """Bazel Bundletool Commands."""
 
+load(
+    "//rules:utils.bzl",
+    "ANDROID_TOOLCHAIN_TYPE",
+)
+load("@bazel_skylib//lib:paths.bzl", "paths")
 load(":common.bzl", _common = "common")
 load(":java.bzl", _java = "java")
 
@@ -83,7 +88,10 @@ def _build_sdk_apks(
         debug_key = None,
         bundletool = None,
         host_javabase = None):
-    apks_out = ctx.actions.declare_directory(ctx.label.name + "_sdk_apks")
+    apks_out = ctx.actions.declare_directory(
+        "%s_apks_out" % paths.basename(out.path).replace(".", "_"),
+        sibling = out,
+    )
     args = ctx.actions.args()
     args.add("build-sdk-apks")
     args.add("--aapt2", aapt2.executable.path)
@@ -133,6 +141,7 @@ def _build_sdk_bundle(
         ctx,
         out = None,
         module = None,
+        sdk_api_descriptors = None,
         sdk_modules_config = None,
         bundletool = None,
         host_javabase = None):
@@ -140,6 +149,7 @@ def _build_sdk_bundle(
     args.add("build-sdk-bundle")
 
     args.add("--sdk-modules-config", sdk_modules_config)
+    args.add("--sdk-interface-descriptors", sdk_api_descriptors)
     args.add("--modules", module)
     args.add("--output", out)
     _java.run(
@@ -149,6 +159,7 @@ def _build_sdk_bundle(
         arguments = [args],
         inputs = [
             module,
+            sdk_api_descriptors,
             sdk_modules_config,
         ],
         outputs = [out],
@@ -172,6 +183,7 @@ def _build_sdk_module(
         arguments = [args],
         mnemonic = "BuildSdkModule",
         progress_message = "Building ASB zip module %s" % out.short_path,
+        toolchain = ANDROID_TOOLCHAIN_TYPE,
     )
 
 def _bundle_to_apks(
@@ -267,6 +279,7 @@ echo "$contents" > %s
         mnemonic = "ExtractBundleConfig",
         progress_message = "Extract bundle config to %s" % out.short_path,
         command = cmd,
+        exec_group = "android_and_java",
     )
 
 def _extract_manifest(
@@ -302,6 +315,7 @@ echo "$contents" > %s
         mnemonic = "ExtractBundleManifest",
         progress_message = "Extract bundle manifest to %s" % out.short_path,
         command = cmd,
+        exec_group = "android_and_java",
     )
 
 def _proto_apk_to_module(
@@ -373,6 +387,7 @@ cd "${OUT_DIR}"
         outputs = [out],
         mnemonic = "Rebundle",
         progress_message = "Rebundle to %s" % out.short_path,
+        toolchain = ANDROID_TOOLCHAIN_TYPE,
     )
 
 bundletool = struct(
