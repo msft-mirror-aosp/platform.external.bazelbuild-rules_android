@@ -17,7 +17,7 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
-def rules_android_prereqs():
+def rules_android_prereqs(dev_mode = False):
     """Downloads prerequisite repositories for rules_android."""
     maybe(
         http_archive,
@@ -87,9 +87,9 @@ def rules_android_prereqs():
     maybe(
         http_archive,
         name = "robolectric",
-        urls = ["https://github.com/robolectric/robolectric-bazel/archive/4.9.2.tar.gz"],
-        strip_prefix = "robolectric-bazel-4.9.2",
-        sha256 = "7e007fcfdca7b7228cb4de72707e8b317026ea95000f963e91d5ae365be52d0d",
+        urls = ["https://github.com/robolectric/robolectric-bazel/archive/4.10.3.tar.gz"],
+        strip_prefix = "robolectric-bazel-4.10.3",
+        sha256 = "1b199a932cbde4af728dd8275937091adbb89a4bf63d326de49e6d0a42e723bf",
     )
 
     maybe(
@@ -133,20 +133,21 @@ def rules_android_prereqs():
         sha256 = "84aec9e21cc56fbc7f1335035a71c850d1b9b5cc6ff497306f84cced9a769841",
     )
 
-    maybe(
-        http_archive,
-        name = "rules_bazel_integration_test",
-        sha256 = "d6dada79939533a8127000d2aafa125f29a4a97f720e01c050fdeb81b1080b08",
-        urls = [
-            "https://github.com/bazel-contrib/rules_bazel_integration_test/releases/download/v0.17.0/rules_bazel_integration_test.v0.17.0.tar.gz",
-        ],
-    )
+    if dev_mode:
+        maybe(
+            http_archive,
+            name = "rules_bazel_integration_test",
+            sha256 = "d6dada79939533a8127000d2aafa125f29a4a97f720e01c050fdeb81b1080b08",
+            urls = [
+                "https://github.com/bazel-contrib/rules_bazel_integration_test/releases/download/v0.17.0/rules_bazel_integration_test.v0.17.0.tar.gz",
+            ],
+        )
 
-    maybe(
-        http_archive,
-        name = "cgrindel_bazel_starlib",
-        sha256 = "a8d25340956b429b56302d3fd702bb3df8b3a67db248dd32b3084891ad497964",
-        urls = [
-            "https://github.com/cgrindel/bazel-starlib/releases/download/v0.17.0/bazel-starlib.v0.17.0.tar.gz",
-        ],
-    )
+        maybe(
+            http_archive,
+            name = "cgrindel_bazel_starlib",
+            sha256 = "a8d25340956b429b56302d3fd702bb3df8b3a67db248dd32b3084891ad497964",
+            urls = [
+                "https://github.com/cgrindel/bazel-starlib/releases/download/v0.17.0/bazel-starlib.v0.17.0.tar.gz",
+            ],
+        )
