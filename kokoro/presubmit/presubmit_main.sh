@@ -98,14 +98,18 @@ function main() {
   cd "${KOKORO_ARTIFACTS_DIR}/git/rules_android"
 
   # Fetch all external deps; should reveal any bugs related to external dep
-  # references.
-  "$bazel" aquery 'deps(...)' --noenable_bzlmod 2>&1 > /dev/null
+  # references. First run this query with bzlmod enabled to catch missing
+  # bzlmod deps.
+  "$bazel" aquery 'deps(...)' --enable_bzlmod > /dev/null
+  # Perform the same aquery with bzlmod disabled to sniff out WORKSPACE issues
+  "$bazel" aquery 'deps(...)' --noenable_bzlmod > /dev/null
 
   "$bazel" test "${COMMON_ARGS[@]}" //src/common/golang/... \
     //src/tools/ak/... \
     //src/tools/javatests/... \
     //src/tools/jdeps/... \
     //src/tools/java/... \
+    //src/tools/mi/... \
     //test/...
 
   # Go to basic app workspace in the source tree
