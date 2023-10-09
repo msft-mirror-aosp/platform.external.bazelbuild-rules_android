@@ -4,8 +4,15 @@ load("//rules:rules.bzl", "android_binary", "android_library")
     android_binary(
         name = name,
         srcs = ["BasicActivity.java"],
+        # Work around --java_runtime_version=17 and --java_language_version=11
+        # set in the presubmit tests.
+        javacopts = [
+            "-target",
+            "8",
+            "-source",
+            "8",
+        ],
         manifest = "AndroidManifest.xml",
-        min_sdk_version = 27,
         proguard_specs = specs,
         resource_files = glob(["res/**"]),
         shrink_resources = shrink,
@@ -14,9 +21,6 @@ load("//rules:rules.bzl", "android_binary", "android_library")
             ":basic_lib",
             ":lib_with_specs",
         ],
-        # Work around --java_runtime_version=17 and --java_language_version=11
-        # set in the presubmit tests.
-        javacopts = ["-target", "8", "-source", "8"],
     )
     for name, specs, shrink in [
         (
