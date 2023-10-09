@@ -30,23 +30,6 @@ _ProguardSpecContextInfo = provider(
     ),
 )
 
-_ProguardOutputInfo = provider(
-    doc = "Temporary provider to hold all proguard outputs. Will be replaced by a native  " +
-          "provider. Useful for testing.",
-    fields = dict(
-        input_jar = "The input program jar, unoptimized",
-        output_jar = "The optimized output jar",
-        mapping = "Output proguard map",
-        proto_mapping = "Output proto mapping",
-        seeds = "Output seeds",
-        usage = "Output usage",
-        library_jar = "Merged library jar",
-        config = "Output config",
-        baseline_profile_rewritten = "Optimized baseline profile",
-        startup_profile_rewritten = "Optimized startup profile",
-    ),
-)
-
 def _validate_proguard_spec(
         ctx,
         out_validated_proguard_spec,
@@ -369,20 +352,32 @@ def _apply_proguard(
       proguard_tool: FilesToRun. The proguard executable.
 
     Returns:
-      A struct of proguard outputs, corresponding to the fields in ProguardOutputInfo.
+      A struct of proguard outputs.
     """
     if not proguard_specs:
+        outputs = _get_proguard_output(
+            ctx,
+            proguard_output_jar = proguard_output_jar,
+            proguard_seeds = None,
+            proguard_usage = None,
+            proguard_output_map = proguard_output_map,
+            combined_library_jar = None,
+            startup_profile_rewritten = None,
+            baseline_profile_rewritten = None,
+        )
+
         # Fail at execution time if these artifacts are requested, to avoid issue where outputs are
         # declared without having any proguard specs. This can happen if specs is a select() that
         # resolves to an empty list.
         _fail_action(
             ctx,
-            proguard_output_jar,
-            proguard_output_map,
+            outputs.output_jar,
+            outputs.mapping,
+            outputs.config,
             proguard_seeds,
             proguard_usage,
         )
-        return None
+        return outputs
 
     library_jar_list = [get_android_sdk(ctx).android_jar]
     if ctx.fragments.android.desugar_java8:
@@ -416,11 +411,19 @@ def _get_proguard_output(
         startup_profile_rewritten,
         baseline_profile_rewritten):
     """Helper method to get a struct of all proguard outputs."""
+
+    # Proto Output Map is currently empty from ProGuard.
+    proguard_output_proto_map = None
+    if proguard_output_map:
+        proguard_output_proto_map = _get_proguard_temp_artifact(ctx, "_proguard.pbmap")
+        ctx.actions.write(proguard_output_proto_map, content = "")
+
     config_output = _get_proguard_temp_artifact(ctx, "_proguard.config")
 
     return struct(
         output_jar = proguard_output_jar,
         mapping = proguard_output_map,
+        proto_mapping = proguard_output_proto_map,
         seeds = proguard_seeds,
         usage = proguard_usage,
         library_jar = combined_library_jar,
@@ -575,7 +578,7 @@ def _create_optimization_actions(
                     proguard_specs,
                     proguard_mapping,
                     i,
-                    "_ACTION_%s_OF_%s_" % (j, bytecode_optimization_pass_actions),
+                    "_ACTION_%s_OF_%s" % (j, bytecode_optimization_pass_actions),
                     mnemonic,
                     last_stage_output,
                     optimizer_target,
@@ -678,5 +681,4 @@ testing = struct(
     collect_transitive_proguard_specs = _collect_transitive_proguard_specs,
     optimization_action = _optimization_action,
     ProguardSpecContextInfo = _ProguardSpecContextInfo,
-    ProguardOutputInfo = _ProguardOutputInfo,
 )
