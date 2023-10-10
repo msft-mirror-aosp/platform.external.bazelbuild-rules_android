@@ -1,4 +1,4 @@
-# Copyright 2022 The Bazel Authors. All rights reserved.
+# Copyright 2021 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Rollout list for enabling enforce min SDK floor."""
+"""This aspect is used to collect providers from an instrumented android_binary."""
 
-ENFORCE_MIN_SDK_FLOOR_ROLLOUT = [
-    "//:__subpackages__",
-]
+load("//rules:providers.bzl", "InstrumentedAppInfo")
 
-ENFORCE_MIN_SDK_FLOOR_FALLBACK = [
-]
+def _impl(unused_target, ctx):
+    if hasattr(ctx.rule.attr, "instruments") and ctx.rule.attr.instruments and AndroidIdeInfo in ctx.rule.attr.instruments:
+        return [InstrumentedAppInfo(android_ide_info = ctx.rule.attr.instruments[AndroidIdeInfo])]
+    return []
+
+instrumented_app_info_aspect = aspect(
+    implementation = _impl,
+)

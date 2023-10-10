@@ -179,7 +179,7 @@ def _filter_unique_shared_libs(linked_libs, cc_info):
                 "Each library in the transitive closure must have a " +
                 "unique basename to avoid name collisions when packaged into " +
                 "an apk, but two libraries have the basename '" + basename +
-                "': " + artifact + " and " + old_artifact + (
+                "': " + str(artifact) + " and " + str(old_artifact) + (
                     " (the library already seen by this target)" if old_artifact in linked_libs else ""
                 ),
             )
@@ -237,8 +237,16 @@ def _is_shared_library(lib_artifact):
             return True
     return False
 
-def _get_build_info(ctx):
-    return cc_common.get_build_info(ctx)
+def _is_stamping_enabled(ctx):
+    if ctx.configuration.is_tool_configuration():
+        return 0
+    return getattr(ctx.attr, "stamp", 0)
+
+def _get_build_info(ctx, cc_toolchain):
+    if _is_stamping_enabled(ctx):
+        return cc_toolchain.build_info_files().non_redacted_build_info_files.to_list()
+    else:
+        return cc_toolchain.build_info_files().redacted_build_info_files.to_list()
 
 def _get_shared_native_deps_path(
         linker_inputs,
@@ -294,14 +302,19 @@ def _link_native_deps_if_present(ctx, cc_info, cc_toolchain, build_config, actua
         build_config.bin_dir,
     )
 
-    link_opts = cc_info.linking_context.user_link_flags
+    linker_inputs = cc_info.linking_context.linker_inputs.to_list()
+
+    link_opts = []
+    for linker_input in linker_inputs:
+        for flag in linker_input.user_link_flags:
+            link_opts.append(flag)
 
     linkstamps = []
-    for input in cc_info.linking_context.linker_inputs.to_list():
-        linkstamps.extend(input.linkstamps)
+    for linker_input in linker_inputs:
+        linkstamps.extend(linker_input.linkstamps)
     linkstamps_dict = {linkstamp: None for linkstamp in linkstamps}
 
-    build_info_artifacts = _get_build_info(ctx) if linkstamps_dict else []
+    build_info_artifacts = _get_build_info(ctx, cc_toolchain) if linkstamps_dict else []
     requested_features = ["static_linking_mode", "native_deps_link"]
     requested_features.extend(ctx.features)
     if not "legacy_whole_archive" in ctx.disabled_features:
