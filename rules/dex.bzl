@@ -50,12 +50,7 @@ def _process_incremental_dexing(
     incremental_dexopts = _filter_dexopts(dexopts, ctx.fragments.android.get_dexopts_supported_in_incremental_dexing)
     inclusion_filter_jar = proguarded_jar
     if not proguarded_jar:
-        dex_archives_list = info.dex_archives_dict.get("".join(incremental_dexopts), depset()).to_list()
-        dex_archives = _to_dexed_classpath(
-            dex_archives_dict = {d.jar: d.dex for d in dex_archives_list},
-            classpath = _filter(java_info.transitive_runtime_jars.to_list(), excludes = _get_library_r_jars(deps)),
-            runtime_jars = runtime_jars,
-        )
+        dex_archives = []
         for jar in runtime_jars:
             dex_archive = _get_dx_artifact(ctx, jar.basename + ".dex.zip")
             _dex(
@@ -68,6 +63,11 @@ def _process_incremental_dexing(
                 toolchain_type = toolchain_type,
             )
             dex_archives.append(dex_archive)
+        dex_archives += _to_dexed_classpath(
+            dex_archives_dict = {d.jar: d.dex for d in info.dex_archives_dict.get("".join(incremental_dexopts), depset()).to_list()},
+            classpath = _filter(java_info.transitive_runtime_jars.to_list(), excludes = _get_library_r_jars(deps)),
+            runtime_jars = runtime_jars,
+        )
     else:
         java_resource_jar = ctx.actions.declare_file(ctx.label.name + "_files/java_resources.jar")
         if ctx.fragments.android.incremental_dexing_shards_after_proguard > 1:
@@ -332,7 +332,7 @@ def _shard_dexes(
         outputs = [output],
         inputs = inputs,
         arguments = [args],
-        mnemonic = "ShardsForMultiDex",
+        mnemonic = "ShardForMultidex",
         progress_message = "Assembling dex files for " + ctx.label.name,
         use_default_shell_env = True,
         toolchain = toolchain_type,
@@ -396,6 +396,8 @@ def _dex(
         dex_exec: File. The executable dex builder file.
     """
     args = ctx.actions.args()
+    args.use_param_file("@%s", use_always = True)  # Required for workers.
+    args.set_param_file_format("multiline")
 
     args.add("--input_jar", input)
     args.add("--output_zip", output)
