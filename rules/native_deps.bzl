@@ -55,58 +55,15 @@ def _get_libs_dir_name(android_config, target_platform):
         name = name + "-hwasan"
     return name
 
-def process_java_infos(_ctx, deps):
-    """Collects JavaInfos for process()
-
-    Args:
-        _ctx: Unused ctx (need this for uniformity)
-        deps: List of deps
-
-    Returns:
-        List of JavaInfo.cc_link_params_info for all deps
-    """
-    return [dep[JavaInfo].cc_link_params_info for dep in deps if JavaInfo in dep]
-
-def process_android_cc_link_params_infos(_ctx, deps):
-    """Collects AndroidCcLinkParamsInfo for process()
-
-    Args:
-        _ctx: Unused ctx (need this for uniformity)
-        deps: List of deps
-
-    Returns:
-        List of AndroidCcLinkParamsInfo.link_params for all deps
-    """
-    return [dep[AndroidCcLinkParamsInfo].link_params for dep in deps if AndroidCcLinkParamsInfo in dep]
-
-def process_cc_infos(_ctx, deps):
-    """Collects CcInfos for process()
-
-    Args:
-        _ctx: Unused ctx (need this for uniformity)
-        deps: List of deps
-
-    Returns:
-        List of CcInfo's for all deps
-    """
-    return [dep[CcInfo] for dep in deps if CcInfo in dep]
-
-DEFAULT_NATIVE_DEP_SUBPROCESSORS = dict(
-    NativeDepsProcessJavaInfos = process_java_infos,
-    NativeDepsProcessAndroidCcLinkParamsInfos = process_android_cc_link_params_infos,
-    NativeDepsProcessCcInfos = process_cc_infos,
-)
-
-def process(ctx, filename, subprocessors = DEFAULT_NATIVE_DEP_SUBPROCESSORS):
+def process(ctx, filename, merged_native_libs = {}):
     """ Links native deps into a shared library
 
     Args:
       ctx: The context.
       filename: String. The name of the artifact containing the name of the
             linked shared library
-      subprocessors: Dict of function pointers, each element of which handles native
-            dependency collection on a per-provider basis. Defaults to basic collection of JavaInfo,
-            AndroidCcLinkParamsInfo, and CcInfo providers.
+      merged_native_libs: A dict that maps cpu to merged native libraries. This maps to empty
+            lists if native library merging is not enabled.
 
     Returns:
         Tuple of (libs, libs_name) where libs is a depset of all native deps
@@ -129,26 +86,26 @@ def process(ctx, filename, subprocessors = DEFAULT_NATIVE_DEP_SUBPROCESSORS):
             owner = ctx.label,
             user_link_flags = ["-Wl,-soname=lib" + actual_target_name],
         )
-
-        processed_cc_infos = []
-        for subproc in subprocessors.values():
-            processed_cc_infos.extend(subproc(ctx, deps))
         cc_info = cc_common.merge_cc_infos(
             cc_infos = _concat(
                 [CcInfo(linking_context = cc_common.create_linking_context(
                     linker_inputs = depset([linker_input]),
                 ))],
-                processed_cc_infos,
+                [dep[JavaInfo].cc_link_params_info for dep in deps if JavaInfo in dep],
+                [dep[AndroidCcLinkParamsInfo].link_params for dep in deps if AndroidCcLinkParamsInfo in dep],
+                [dep[CcInfo] for dep in deps if CcInfo in dep],
             ),
         )
         libraries = []
+        if merged_native_libs:
+            libraries.extend(merged_native_libs[key])
 
         native_deps_lib = _link_native_deps_if_present(ctx, cc_info, cc_toolchain, build_config, actual_target_name)
         if native_deps_lib:
             libraries.append(native_deps_lib)
             native_libs_basename = native_deps_lib.basename
 
-        libraries.extend(_filter_unique_shared_libs(native_deps_lib, cc_info))
+        libraries.extend(_filter_unique_shared_libs(libraries, cc_info))
 
         if libraries:
             libs[libs_dir_name] = depset(libraries)
@@ -180,11 +137,18 @@ def _all_inputs(cc_info):
         for lib in input.libraries
     ]
 
-def _filter_unique_shared_libs(linked_lib, cc_info):
+def _filter_unique_shared_libs(linked_libs, cc_info):
     basenames = {}
     artifacts = {}
-    if linked_lib:
-        basenames[linked_lib.basename] = linked_lib
+    if linked_libs:
+        basenames = {
+            linked_lib.basename: linked_lib
+            for linked_lib in linked_libs
+        }
+        artifacts = {
+            linked_lib: None
+            for linked_lib in linked_libs
+        }
     for input in _all_inputs(cc_info):
         if input.pic_static_library or input.static_library:
             # This is not a shared library and will not be loaded by Android, so skip it.
@@ -215,8 +179,8 @@ def _filter_unique_shared_libs(linked_lib, cc_info):
                 "Each library in the transitive closure must have a " +
                 "unique basename to avoid name collisions when packaged into " +
                 "an apk, but two libraries have the basename '" + basename +
-                "': " + artifact + " and " + old_artifact + (
-                    " (the library compiled for this target)" if old_artifact == linked_lib else ""
+                "': " + str(artifact) + " and " + str(old_artifact) + (
+                    " (the library already seen by this target)" if old_artifact in linked_libs else ""
                 ),
             )
         else:
@@ -273,8 +237,16 @@ def _is_shared_library(lib_artifact):
             return True
     return False
 
-def _get_build_info(ctx):
-    return cc_common.get_build_info(ctx)
+def _is_stamping_enabled(ctx):
+    if ctx.configuration.is_tool_configuration():
+        return 0
+    return getattr(ctx.attr, "stamp", 0)
+
+def _get_build_info(ctx, cc_toolchain):
+    if _is_stamping_enabled(ctx):
+        return cc_toolchain.build_info_files().non_redacted_build_info_files.to_list()
+    else:
+        return cc_toolchain.build_info_files().redacted_build_info_files.to_list()
 
 def _get_shared_native_deps_path(
         linker_inputs,
@@ -330,14 +302,19 @@ def _link_native_deps_if_present(ctx, cc_info, cc_toolchain, build_config, actua
         build_config.bin_dir,
     )
 
-    link_opts = cc_info.linking_context.user_link_flags
+    linker_inputs = cc_info.linking_context.linker_inputs.to_list()
+
+    link_opts = []
+    for linker_input in linker_inputs:
+        for flag in linker_input.user_link_flags:
+            link_opts.append(flag)
 
     linkstamps = []
-    for input in cc_info.linking_context.linker_inputs.to_list():
-        linkstamps.extend(input.linkstamps)
+    for linker_input in linker_inputs:
+        linkstamps.extend(linker_input.linkstamps)
     linkstamps_dict = {linkstamp: None for linkstamp in linkstamps}
 
-    build_info_artifacts = _get_build_info(ctx) if linkstamps_dict else []
+    build_info_artifacts = _get_build_info(ctx, cc_toolchain) if linkstamps_dict else []
     requested_features = ["static_linking_mode", "native_deps_link"]
     requested_features.extend(ctx.features)
     if not "legacy_whole_archive" in ctx.disabled_features:

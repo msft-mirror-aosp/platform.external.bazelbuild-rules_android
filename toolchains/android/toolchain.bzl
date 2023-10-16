@@ -17,6 +17,7 @@
 _ATTRS = dict(
     aapt2 = attr.label(
         allow_files = True,
+        cfg = "exec",
         default = "@androidsdk//:aapt2_binary",
     ),
     aar_import_checks = attr.label(
@@ -96,6 +97,12 @@ _ATTRS = dict(
         default = "//tools/android:bundletool_deploy.jar",
         executable = True,
     ),
+    bundletool_module_builder = attr.label(
+        allow_single_file = True,
+        cfg = "exec",
+        default = "//src/tools/bundletool_module_builder",
+        executable = True,
+    ),
     centralize_r_class_tool = attr.label(
         allow_files = True,
         cfg = "exec",
@@ -131,9 +138,19 @@ _ATTRS = dict(
         default = Label("@bazel_tools//tools/android:dexbuilder"),
         executable = True,
     ),
+    dexbuilder_after_proguard = attr.label(
+        cfg = "exec",
+        default = Label("@bazel_tools//tools/android:dexbuilder_after_proguard"),
+        executable = True,
+    ),
     dexmerger = attr.label(
         cfg = "exec",
         default = Label("@bazel_tools//tools/android:dexmerger"),
+        executable = True,
+    ),
+    dexsharder = attr.label(
+        cfg = "exec",
+        default = Label("@bazel_tools//tools/android:dexsharder"),
         executable = True,
     ),
     enforce_min_sdk_floor_tool = attr.label(
@@ -145,7 +162,7 @@ _ATTRS = dict(
     idlclass = attr.label(
         allow_files = True,
         cfg = "exec",
-        default = "@bazel_tools//tools/android:IdlClass",  # _deploy.jar?
+        default = "@bazel_tools//src/tools/android/java/com/google/devtools/build/android/idlclass:IdlClass_deploy.jar",
         executable = True,
     ),
     import_deps_checker = attr.label(
@@ -170,10 +187,10 @@ _ATTRS = dict(
         executable = True,
     ),
     merge_baseline_profiles_tool = attr.label(
-      default = "@androidsdk//:fail",
-      cfg = "exec",
-      executable = True
-      ),
+        default = "@androidsdk//:fail",
+        cfg = "exec",
+        executable = True,
+    ),
     object_method_rewriter = attr.label(
         allow_files = True,
         cfg = "exec",
@@ -186,7 +203,7 @@ _ATTRS = dict(
         executable = True,
     ),
     profgen = attr.label(
-        default =  "@androidsdk//:fail",
+        default = "@androidsdk//:fail",
         cfg = "exec",
         executable = True,
     ),
@@ -195,6 +212,18 @@ _ATTRS = dict(
         default = "@androidsdk//:fail",
         allow_files = True,
         executable = True,
+    ),
+    r8 = attr.label(
+        cfg = "exec",
+        default = "//tools/android:r8_deploy.jar",
+        executable = True,
+        allow_files = True,
+    ),
+    resource_shrinker = attr.label(
+        cfg = "exec",
+        default = "//tools/android:resource_shrinker_deploy.jar",
+        executable = True,
+        allow_files = True,
     ),
     res_v3_dummy_manifest = attr.label(
         allow_files = True,
@@ -208,8 +237,19 @@ _ATTRS = dict(
         allow_files = True,
         default = "//rules:robolectric_properties_template.txt",
     ),
+    sandboxed_sdk_toolbox = attr.label(
+        allow_single_file = True,
+        cfg = "exec",
+        default = "//src/tools/java/com/google/devtools/build/android/sandboxedsdktoolbox:sandboxed_sdk_toolbox_deploy.jar",
+        executable = True,
+    ),
+    shuffle_jars = attr.label(
+        cfg = "exec",
+        default = Label("@bazel_tools//tools/android:shuffle_jars"),
+        executable = True,
+    ),
     testsupport = attr.label(
-        default = "@androidsdk//:fail",
+        default = "@bazel_tools//tools/jdk:TestRunner",
     ),
     unzip_tool = attr.label(
         cfg = "exec",
@@ -251,6 +291,11 @@ _ATTRS = dict(
     build_java8_legacy_dex = attr.label(
         cfg = "exec",
         default = "@bazel_tools//tools/android:build_java8_legacy_dex",
+        executable = True,
+    ),
+    dex_list_obfuscator = attr.label(
+        cfg = "exec",
+        default = "@bazel_tools//tools/android:dex_list_obfuscator",
         executable = True,
     ),
 )

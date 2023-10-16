@@ -14,8 +14,8 @@
 
 """Workspace setup macro for rules_android."""
 
-load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
+load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
 load("@robolectric//bazel:robolectric.bzl", "robolectric_repositories")
@@ -33,8 +33,19 @@ def rules_android_workspace():
     maven_install(
         name = "rules_android_maven",
         artifacts = [
-            "com.android.tools.build:bundletool:1.6.1",
-            "com.android.tools.build:gradle:8.0.1",
+            "androidx.privacysandbox.tools:tools:1.0.0-alpha06",
+            "androidx.privacysandbox.tools:tools-apigenerator:1.0.0-alpha06",
+            "androidx.privacysandbox.tools:tools-apipackager:1.0.0-alpha06",
+            "androidx.test:core:1.6.0-alpha01",
+            "androidx.test.ext:junit:1.2.0-alpha01",
+            "com.android.tools.build:bundletool:1.15.2",
+            "com.android.tools.build:gradle:8.2.0-alpha15",
+            "org.robolectric:robolectric:4.10.3",
+            "com.google.guava:guava:32.1.2-jre",
+            "com.google.protobuf:protobuf-java-util:3.9.2",
+            "com.google.truth:truth:1.1.5",
+            "info.picocli:picocli:4.7.4",
+            "junit:junit:4.13.2",
         ],
         repositories = [
             "https://maven.google.com",
@@ -44,7 +55,7 @@ def rules_android_workspace():
 
     go_rules_dependencies()
 
-    go_register_toolchains(version = "1.18.3")
+    go_register_toolchains(version = "1.20.5")
 
     gazelle_dependencies()
     # gazelle:repository go_repository name=org_golang_x_xerrors importpath=golang.org/x/xerrors
@@ -64,10 +75,17 @@ def rules_android_workspace():
     )
 
     go_repository(
-      name = "org_golang_x_sync",
-      importpath = "golang.org/x/sync",
-      sum = "h1:5KslGYwFpkhGh+Q16bwMP3cOontH8FOep7tGV86Y7SQ=",
-      version = "v0.0.0-20210220032951-036812b2e83c",
+        name = "org_golang_x_sync",
+        importpath = "golang.org/x/sync",
+        sum = "h1:5KslGYwFpkhGh+Q16bwMP3cOontH8FOep7tGV86Y7SQ=",
+        version = "v0.0.0-20210220032951-036812b2e83c",
+    )
+
+    go_repository(
+        name = "com_github_golang_glog",
+        importpath = "github.com/golang/glog",
+        version = "v1.1.2",
+        sum = "h1:DVjP2PbBOzHyzA+dn3WhHIq4NdVu3Q+pvivFICf/7fo=",
     )
 
     robolectric_repositories()

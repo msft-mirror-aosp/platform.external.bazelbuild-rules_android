@@ -177,6 +177,7 @@ def _create_feature_manifest(
             ],
             mnemonic = "GenFeatureManifest",
             progress_message = "Generating AndroidManifest.xml for " + feature_target.label.name,
+            toolchain = None,
         )
         return manifest
 
@@ -201,6 +202,7 @@ def _create_feature_manifest(
         ],
         mnemonic = "GenPriorityFeatureManifest",
         progress_message = "Generating Priority AndroidManifest.xml for " + feature_target.label.name,
+        toolchain = None,
     )
 
     args = ctx.actions.args()
@@ -213,6 +215,7 @@ def _create_feature_manifest(
         inputs = [priority_manifest, info.manifest],
         outputs = [manifest],
         arguments = [args],
+        toolchain = None,
     )
 
     return manifest
@@ -258,8 +261,8 @@ def _impl(ctx):
             ctx,
             out = module,
             proto_apk = proto_apk,
-            unzip = get_android_toolchain(ctx).unzip_tool.files_to_run,
-            zip = get_android_toolchain(ctx).zip_tool.files_to_run,
+            bundletool_module_builder =
+                get_android_toolchain(ctx).bundletool_module_builder.files_to_run,
         )
 
     metadata = dict()
@@ -336,7 +339,10 @@ android_application = rule(
         "deploy_script": "%{name}.sh",
         "unsigned_aab": "%{name}_unsigned.aab",
     },
-    toolchains = ["//toolchains/android:toolchain_type"],
+    toolchains = [
+        "//toolchains/android:toolchain_type",
+        "@bazel_tools//tools/jdk:toolchain_type",
+    ],
     _skylark_testable = True,
 )
 
