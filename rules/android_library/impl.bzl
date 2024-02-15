@@ -27,7 +27,7 @@ load(
     "processing_pipeline",
 )
 load("//rules:proguard.bzl", _proguard = "proguard")
-load("//rules:providers.bzl", "AndroidLintRulesInfo")
+load("//rules:providers.bzl", "AndroidLintRulesInfo", "StarlarkApkInfo")
 load("//rules:resources.bzl", _resources = "resources")
 load("//rules:utils.bzl", "get_android_sdk", "get_android_toolchain", "log", "utils")
 load("//rules/flags:flags.bzl", _flags = "flags")
@@ -79,7 +79,8 @@ def _uses_deprecated_implicit_export(ctx):
     return (ctx.attr.deps and not (_has_srcs(ctx) or
                                    ctx.attr._defined_assets or
                                    ctx.files.resource_files or
-                                   ctx.attr.manifest))
+                                   ctx.attr.manifest or
+                                   ctx.attr.baseline_profiles))
 
 def _uses_resources_and_deps_without_srcs(ctx):
     return (ctx.attr.deps and
@@ -132,7 +133,7 @@ def _process_manifest(ctx, **unused_ctxs):
     manifest_ctx = _resources.bump_min_sdk(
         ctx,
         manifest = ctx.file.manifest,
-        floor = _resources.DEPOT_MIN_SDK_FLOOR if acls.in_enforce_min_sdk_floor_rollout(str(ctx.label)) else 0,
+        floor = acls.get_min_sdk_floor(str(ctx.label)),
         enforce_min_sdk_floor_tool = get_android_toolchain(ctx).enforce_min_sdk_floor_tool.files_to_run,
     )
 
@@ -147,6 +148,10 @@ def _process_resources(ctx, java_package, manifest_ctx, **unused_ctxs):
         exports_manifest = ctx.fragments.android.get_exports_manifest_default
     else:
         exports_manifest = ctx.attr.exports_manifest == _attrs.tristate.yes
+
+    resource_apks = []
+    for apk in utils.collect_providers(StarlarkApkInfo, ctx.attr.resource_apks):
+        resource_apks.append(apk.signed_apk)
 
     # Process Android Resources
     resources_ctx = _resources.process(
@@ -163,6 +168,7 @@ def _process_resources(ctx, java_package, manifest_ctx, **unused_ctxs):
         neverlink = ctx.attr.neverlink,
         enable_data_binding = ctx.attr.enable_data_binding,
         deps = ctx.attr.deps,
+        resource_apks = resource_apks,
         exports = ctx.attr.exports,
 
         # Processing behavior changing flags.
@@ -248,15 +254,13 @@ def _process_data_binding(ctx, java_package, resources_ctx, **unused_sub_ctxs):
 def _process_proguard(ctx, idl_ctx, **unused_sub_ctxs):
     return ProviderInfo(
         name = "proguard_ctx",
-        value = _proguard.process(
+        value = _proguard.process_specs(
             ctx,
             proguard_configs = ctx.files.proguard_specs,
             proguard_spec_providers = utils.collect_providers(
                 ProguardSpecProvider,
                 ctx.attr.deps,
                 ctx.attr.exports,
-                ctx.attr.plugins,
-                ctx.attr.exported_plugins,
                 idl_ctx.idl_deps,
             ),
             proguard_allowlister =
@@ -445,6 +449,19 @@ def _process_coverage(ctx, **unused_ctx):
         ),
     )
 
+def _process_baseline_profiles(ctx, **unused_ctx):
+    return ProviderInfo(
+        name = "bp_ctx",
+        value = struct(
+            providers = [
+                BaselineProfileProvider(depset(
+                    ctx.files.baseline_profiles,
+                    transitive = [bp.files for bp in utils.collect_providers(BaselineProfileProvider, ctx.attr.deps, ctx.attr.exports)],
+                )),
+            ],
+        ),
+    )
+
 # Order dependent, as providers will not be available to downstream processors
 # that may depend on the provider. Iteration order for a dictionary is based on
 # insertion.
@@ -460,6 +477,7 @@ PROCESSORS = dict(
     NativeProcessor = _process_native,
     IntelliJProcessor = _process_intellij,
     CoverageProcessor = _process_coverage,
+    BaselineProfilesProcessor = _process_baseline_profiles,
 )
 
 # TODO(b/119560471): Deprecate the usage of legacy providers.
