@@ -3,7 +3,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 # Description:
 #   Common libraries and utilities.
-package(default_visibility = ["//visibility:public"])
+package(
+    default_applicable_licenses = ["//:license"],
+    default_visibility = ["//visibility:public"],
+)
 
 licenses(["notice"])
 
@@ -93,4 +96,24 @@ go_library(
     name = "flagfile",
     srcs = ["flagfile.go"],
     importpath = "src/common/golang/flagfile",
+)
+
+genrule(
+    name = "a_txt",
+    outs = ["a.txt"],
+    cmd = "echo hello world > $@",
+)
+
+go_library(
+    name = "runfilelocation",
+    srcs = ["runfilelocation.go"],
+    importpath = "src/common/golang/runfilelocation",
+    deps = ["@io_bazel_rules_go//go/runfiles"],
+)
+
+go_test(
+    name = "runfilelocation_test",
+    srcs = ["runfilelocation_test.go"],
+    data = [":a_txt"],
+    embed = [":runfilelocation"],
 )

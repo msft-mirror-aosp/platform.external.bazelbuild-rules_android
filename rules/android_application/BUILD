@@ -1,5 +1,6 @@
 # The android_application rule.
 
+load("@rules_python//python:defs.bzl", "py_binary")
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
 licenses(["notice"])
@@ -24,4 +25,22 @@ bzl_library(
         "//rules:common_bzl",
         "//rules/flags:bzl",
     ],
+)
+
+py_binary(
+    name = "merge_feature_manifests",
+    srcs = ["merge_feature_manifests.py"],
+    python_version = "PY3",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@py_absl//absl:app",
+        "@py_absl//absl/flags",
+    ],
+)
+
+filegroup(
+    name = "merge_feature_manifests.par",
+    srcs = [":merge_feature_manifests"],
+    output_group = "python_zip_file",
+    visibility = ["//visibility:public"],
 )

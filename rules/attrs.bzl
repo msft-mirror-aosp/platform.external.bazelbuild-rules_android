@@ -15,6 +15,7 @@
 """Common attributes for Android rules."""
 
 load(":utils.bzl", "log")
+load(":native_toolchain_attrs.bzl", "ANDROID_SDK_TOOLCHAIN_TYPE_DEFAULT")
 
 def _add(attrs, *others):
     new = {}
@@ -266,6 +267,12 @@ ANDROID_SDK_ATTRS = dict(
         mandatory = True,
     ),
     build_tools_version = attr.string(),
+    dexdump = attr.label(
+        allow_files = True,
+        cfg = "exec",
+        executable = True,
+        mandatory = False,
+    ),
     dx = attr.label(
         allow_files = True,
         cfg = "exec",
@@ -325,14 +332,29 @@ ANDROID_SDK_ATTRS = dict(
     ),
 )
 
+# Attributes for resolving platform-based toolchains. Only needed by the native
+# DexArchiveAspect.
+_ANDROID_TOOLCHAIN_ATTRS = dict(
+    _android_sdk_toolchain_type = attr.label(
+        allow_rules = ["toolchain_type"],
+        default = ANDROID_SDK_TOOLCHAIN_TYPE_DEFAULT,
+    ),
+)
+
 ANDROID_TOOLS_DEFAULTS_JAR_ATTRS = _add(_ANDROID_SDK)
+
+_AUTOMATIC_EXEC_GROUPS_ENABLED = dict(
+    _use_auto_exec_groups = attr.bool(default = True),
+)
 
 attrs = struct(
     ANDROID_SDK = _ANDROID_SDK,
     COMPILATION = _COMPILATION,
     DATA_CONTEXT = _DATA_CONTEXT,
     JAVA_RUNTIME = _JAVA_RUNTIME,
+    ANDROID_TOOLCHAIN_ATTRS = _ANDROID_TOOLCHAIN_ATTRS,
     tristate = _tristate,
     add = _add,
     replace = _replace,
+    AUTOMATIC_EXEC_GROUPS_ENABLED = _AUTOMATIC_EXEC_GROUPS_ENABLED,
 )

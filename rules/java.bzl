@@ -21,6 +21,9 @@ _ANDROID_CONSTRAINT_MISSING_ERROR = (
     "A list of constraints provided without the 'android' constraint."
 )
 
+# TODO(b/283499746): Reduce singlejar memory if possible.
+_SINGLEJAR_MEMORY_FOR_DEPLOY_JAR_MB = 1600
+
 def _segment_idx(path_segments):
     """Finds the index of the segment in the path that preceeds the source root.
 
@@ -359,12 +362,19 @@ def _singlejar(
         output,
         mnemonic = "SingleJar",
         progress_message = "Merge into a single jar.",
+        build_target = "",
+        check_desugar_deps = False,
+        compression = True,
+        deploy_manifest_lines = [],
         include_build_data = False,
-        java_toolchain = None):
+        include_prefixes = [],
+        java_toolchain = None,
+        resource_set = None):
     args = ctx.actions.args()
     args.add("--output")
     args.add(output)
-    args.add("--compression")
+    if compression:
+        args.add("--compression")
     args.add("--normalize")
     if not include_build_data:
         args.add("--exclude_build_data")
@@ -373,16 +383,27 @@ def _singlejar(
         args.add("--sources")
         args.add_all(inputs)
 
+    if build_target:
+        args.add("--build_target", build_target)
+    if check_desugar_deps:
+        args.add("--check_desugar_deps")
+    if deploy_manifest_lines:
+        args.add_all("--deploy_manifest_lines", deploy_manifest_lines)
+    if include_prefixes:
+        args.add_all("--include_prefixes", include_prefixes)
+
     args.use_param_file("@%s")
     args.set_param_file_format("multiline")
 
     ctx.actions.run(
         executable = java_toolchain[java_common.JavaToolchainInfo].single_jar,
+        toolchain = "@bazel_tools//tools/jdk:toolchain_type",
         arguments = [args],
         inputs = inputs,
         outputs = [output],
         mnemonic = mnemonic,
         progress_message = progress_message,
+        resource_set = resource_set,
     )
 
 def _run(
@@ -407,7 +428,7 @@ def _run(
 
     # Set reasonable max heap default. Required to prevent runaway memory usage.
     # Can still be overridden by callers of this method.
-    jvm_flags = ["-Xmx4G", "-XX:+ExitOnOutOfMemoryError"] + jvm_flags
+    jvm_flags = ["-Xms4G", "-Xmx4G", "-XX:+ExitOnOutOfMemoryError"] + jvm_flags
 
     # executable should be a File or a FilesToRunProvider
     jar = args.get("executable")
@@ -418,6 +439,7 @@ def _run(
 
     java_runtime = host_javabase[java_common.JavaRuntimeInfo]
     args["executable"] = java_runtime.java_executable_exec_path
+    args["toolchain"] = "@bazel_tools//tools/jdk:toolchain_type"
 
     # inputs can be a list or a depset of File
     inputs = args.get("inputs", default = [])
@@ -433,6 +455,32 @@ def _run(
 
     ctx.actions.run(**args)
 
+def _create_deploy_jar(
+        ctx,
+        output = None,
+        runtime_jars = depset(),
+        java_toolchain = None,
+        build_target = "",
+        deploy_manifest_lines = []):
+    _singlejar(
+        ctx,
+        inputs = runtime_jars,
+        output = output,
+        mnemonic = "JavaDeployJar",
+        progress_message = "Building deploy jar %s" % output.short_path,
+        java_toolchain = java_toolchain,
+        build_target = build_target,
+        check_desugar_deps = True,
+        compression = False,
+        deploy_manifest_lines = deploy_manifest_lines,
+        resource_set = _resource_set_for_deploy_jar,
+    )
+    return output
+
+def _resource_set_for_deploy_jar(_os, _inputs_size):
+    # parameters are unused but required by the resource_set API
+    return {"memory": _SINGLEJAR_MEMORY_FOR_DEPLOY_JAR_MB, "cpu": 1}
+
 java = struct(
     compile = _compile,
     compile_android = _compile_android,
@@ -442,4 +490,5 @@ java = struct(
     invalid_java_package = _invalid_java_package,
     run = _run,
     singlejar = _singlejar,
+    create_deploy_jar = _create_deploy_jar,
 )

@@ -16,7 +16,7 @@
 
 load(":java.bzl", _java = "java")
 load(":path.bzl", _path = "path")
-load(":utils.bzl", _log = "log")
+load(":utils.bzl", "ANDROID_TOOLCHAIN_TYPE", _log = "log")
 
 _AIDL_TOOLCHAIN_MISSING_ERROR = (
     "IDL sources provided without the Android IDL toolchain."
@@ -67,13 +67,14 @@ def _gen_java_from_idl(
     args.add(idl_src)
     args.add(out_idl_java_src)
 
+    aidl_lib_files = [aidl_lib.files] if aidl_lib else []
+
     ctx.actions.run(
         executable = aidl,
         arguments = [args],
         inputs = depset(
             [aidl_framework],
-            transitive = [
-                aidl_lib.files,
+            transitive = aidl_lib_files + [
                 transitive_idl_imports,
                 transitive_idl_preprocessed,
             ],
@@ -81,6 +82,7 @@ def _gen_java_from_idl(
         outputs = [out_idl_java_src],
         mnemonic = "AndroidIDLGenerate",
         progress_message = "Android IDL generation %s" % idl_src.path,
+        toolchain = ANDROID_TOOLCHAIN_TYPE,
     )
 
 def _get_idl_import_root_path(
@@ -189,7 +191,7 @@ def _process(
         are supplied.
       aidl_lib: Target. A target pointing to the aidl_lib library required
         during Java compilation when Java code is generated from idl sources.
-        Optional, unless idl_srcs are supplied.
+        Optional.
       aidl_framework: Target. A target pointing to the aidl framework. Optional,
         unless idl_srcs are supplied.
       uses_aosp_compiler: boolean. If True, the upstream AOSP AIDL compiler is
@@ -204,7 +206,7 @@ def _process(
     Returns:
       A IDLContextInfo provider.
     """
-    if idl_srcs and not (aidl and aidl_lib and aidl_framework):
+    if idl_srcs and not (aidl and aidl_framework):
         _log.error(_AIDL_TOOLCHAIN_MISSING_ERROR)
 
     transitive_idl_import_roots = []
@@ -253,7 +255,7 @@ def _process(
         idl_srcs = idl_srcs,
         idl_import_root = idl_import_root,
         idl_java_srcs = idl_java_srcs,
-        idl_deps = [aidl_lib] if idl_java_srcs else [],
+        idl_deps = [aidl_lib] if (idl_java_srcs and aidl_lib) else [],
         providers = [
             # TODO(b/146216105): Make this a Starlark provider.
             AndroidIdlInfo(

@@ -3,7 +3,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 # Description:
 #   Package for parse module
-package(default_visibility = ["//visibility:public"])
+package(
+    default_applicable_licenses = ["//:license"],
+    default_visibility = ["//visibility:public"],
+)
 
 licenses(["notice"])
 
@@ -39,6 +42,7 @@ go_test(
     data = glob(["testdata/**"]),
     embed = [":liteparse"],
     deps = [
+        "//src/common/golang:runfilelocation",
         "//src/tools/ak/res",
         "//src/tools/ak/res/proto:res_data_go_proto",
         "//src/tools/ak/res/respipe",
