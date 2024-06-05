@@ -17,6 +17,7 @@ genrule(
     outs = ["fail.sh"],
     cmd = "echo 'exit 1' > $@",
     executable = 1,
+    visibility = ["//visibility:public"],
 )
 
 sh_binary(
@@ -39,4 +40,44 @@ java_plugin(
     deps = [
         "@bazel_tools//src/tools/android/java/com/google/devtools/build/android:all_android_tools",
     ],
+)
+
+alias(
+    name = "java8_legacy_dex",
+    actual = ":gen_fail",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "desugar_java8",
+    actual = "@bazel_tools//tools/android:desugar_java8",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "desugared_java8_legacy_apis",
+    actual = ":gen_fail", # TODO(#122): Fix library desugaring
+    visibility = ["//visibility:public"],
+)
+
+java_binary(
+    name = "d8",
+    main_class = "com.android.tools.r8.D8",
+    visibility = ["//visibility:public"],
+    runtime_deps = ["@android_gmaven_r8//jar"],
+)
+
+
+java_binary(
+    name = "r8",
+    main_class = "com.android.tools.r8.R8",
+    visibility = ["//visibility:public"],
+    runtime_deps = ["@android_gmaven_r8//jar"],
+)
+
+java_binary(
+    name = "resource_shrinker",
+    main_class = "com.android.build.shrinker.ResourceShrinkerCli",
+    visibility = ["//visibility:public"],
+    runtime_deps = ["@rules_android_maven//:com_android_tools_build_gradle"],
 )

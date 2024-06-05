@@ -14,6 +14,8 @@
 
 """Starlark rules for building Android apps."""
 
+# Don't use relative paths since this file is coppied to //android/rules.bzl.
+
 load(
     "//rules/aar_import:rule.bzl",
     _aar_import = "aar_import",
@@ -23,7 +25,7 @@ load(
     _android_application = "android_application",
 )
 load(
-    ":android_binary.bzl",
+    "//rules:android_binary.bzl",
     _android_binary = "android_binary",
 )
 load(
@@ -31,20 +33,36 @@ load(
     _android_library = "android_library_macro",
 )
 load(
-    ":android_ndk_repository.bzl",
+    "//rules/android_local_test:rule.bzl",
+    _android_local_test = "android_local_test",
+)
+load(
+    "//rules:android_ndk_repository.bzl",
     _android_ndk_repository = "android_ndk_repository",
 )
 load(
-    ":android_sdk.bzl",
+    "//rules/android_sandboxed_sdk:android_sandboxed_sdk.bzl",
+    _android_sandboxed_sdk = "android_sandboxed_sdk",
+)
+load(
+    "//rules/android_sandboxed_sdk:android_sandboxed_sdk_bundle.bzl",
+    _android_sandboxed_sdk_bundle = "android_sandboxed_sdk_bundle",
+)
+load(
+    "//rules:android_sdk.bzl",
     _android_sdk = "android_sdk",
 )
 load(
-    ":android_sdk_repository.bzl",
+    "//rules/android_sdk_repository:rule.bzl",
     _android_sdk_repository = "android_sdk_repository",
 )
 load(
-    ":android_tools_defaults_jar.bzl",
+    "//rules:android_tools_defaults_jar.bzl",
     _android_tools_defaults_jar = "android_tools_defaults_jar",
+)
+load(
+    "//rules/android_sandboxed_sdk:asar_import.bzl",
+    _asar_import = "asar_import",
 )
 
 # Current version. Tools may check this to determine compatibility.
@@ -54,7 +72,11 @@ aar_import = _aar_import
 android_application = _android_application
 android_binary = _android_binary
 android_library = _android_library
+android_local_test = _android_local_test
 android_ndk_repository = _android_ndk_repository
+android_sandboxed_sdk = _android_sandboxed_sdk
+android_sandboxed_sdk_bundle = _android_sandboxed_sdk_bundle
 android_sdk = _android_sdk
 android_sdk_repository = _android_sdk_repository
 android_tools_defaults_jar = _android_tools_defaults_jar
+asar_import = _asar_import

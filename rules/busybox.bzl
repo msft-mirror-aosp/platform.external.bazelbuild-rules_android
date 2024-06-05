@@ -201,6 +201,7 @@ def _package(
         transitive_compiled_resources = [],
         transitive_r_txts = [],
         additional_apks_to_link_against = [],
+        resource_apks = depset(),
         nocompress_extensions = [],
         proto_format = False,
         shrink_resource_cycles = False,
@@ -255,6 +256,7 @@ def _package(
       transitive_r_txts: List of Depsets. Depsets contain all transitive R txt files.
       additional_apks_to_link_against: A list of Files. Additional APKs to link
         against. Optional.
+      resource_apks: Depset of resource only apk files to link against.
       nocompress_extensions: A list of strings. File extension to leave uncompressed
         in the apk.
       proto_format: Boolean, whether to generate the resource table in proto format.
@@ -371,7 +373,7 @@ def _package(
         args.add_joined(
             "--additionalApksToLinkAgainst",
             additional_apks_to_link_against,
-            join_with = ",",
+            join_with = ":",
             map_each = _path,
         )
         input_files.extend(additional_apks_to_link_against)
@@ -387,6 +389,13 @@ def _package(
         args.add("--versionCode", version_code)
     if java_package:
         args.add("--packageForR", java_package)
+
+    args.add_joined(
+        "--resourceApks",
+        resource_apks,
+        join_with = ":",
+    )
+    transitive_input_files.append(resource_apks)
 
     _java.run(
         ctx = ctx,
@@ -534,6 +543,7 @@ def _validate_and_link(
         transitive_compiled_resources = depset(),
         java_package = None,
         manifest = None,
+        resource_apks = [],
         android_jar = None,
         busybox = None,
         host_javabase = None,
@@ -551,6 +561,7 @@ def _validate_and_link(
         compiled resources from the transitive dependencies of this target.
       java_package: A string. The Java package for the generated R.java.
       manifest: A File. The AndroidManifest.xml.
+      resource_apks: List of direct resource only apk files.
       android_jar: A File. The Android Jar.
       busybox: A FilesToRunProvider. The ResourceProcessorBusyBox executable.
       host_javabase: Target. The host javabase.
@@ -586,6 +597,12 @@ def _validate_and_link(
     output_files.append(out_r_txt)
     args.add("--staticLibraryOut", out_file)
     output_files.append(out_file)
+    args.add_joined(
+        "--resourceApks",
+        resource_apks,
+        join_with = ":",
+    )
+    input_files.extend(resource_apks)
 
     _java.run(
         ctx = ctx,
@@ -1030,6 +1047,143 @@ def _make_aar(
         progress_message = "Generating AAR package for %s" % ctx.label,
     )
 
+def _shrink(
+        ctx,
+        out_apk,
+        out_zip,
+        out_log,
+        out_config = None,
+        resources_zip = None,
+        aapt = None,
+        android_jar = None,
+        r_txt = None,
+        shrunk_jar = None,
+        proguard_mapping = None,
+        debug = True,
+        busybox = None,
+        host_javabase = None):
+    """Shrinks the resource apk by removing the resources unused from the packaged app.
+
+    Args:
+        ctx: The context.
+        out_apk: File. The output shrunk resource ap_ package.
+        out_zip: File. The output shrunk resources file zip.
+        out_log: File. The output shrinker log.
+        out_config: File. The output config for the optimizer.
+        resources_zip: File. The input resources file zip.
+        aapt: FilesToRunProvider. The AAPT executable.
+        android_jar: File. The Android Jar.
+        r_txt: File. The resource IDs outputted by linking resources in text.
+        shrunk_jar: File. The proguarded jar.
+        proguard_mapping: File. The Proguard Mapping file.
+        debug: Boolean. Whether to enable debug mode.
+        busybox: FilesToRunProvider. The ResourceBusyBox executable.
+        host_javabase: Target. The host javabase.
+    """
+
+    args = ctx.actions.args()
+    args.use_param_file("@%s")
+    args.add("--tool", "SHRINK_AAPT2")
+    args.add("--")
+    args.add("--aapt2", aapt.executable)
+    args.add("--androidJar", android_jar)
+    args.add("--resources", resources_zip)
+    args.add("--shrunkJar", shrunk_jar)
+    args.add("--proguardMapping", proguard_mapping)
+    args.add("--rTxt", r_txt)
+    args.add("--shrunkResourceApk", out_apk)
+    args.add("--shrunkResources", out_zip)
+    args.add("--log", out_log)
+    args.add("--useDataBindingAndroidX")
+    if debug:
+        args.add("--debug")
+
+    input_files = [
+        android_jar,
+        resources_zip,
+        shrunk_jar,
+        proguard_mapping,
+        r_txt,
+    ]
+    output_files = [
+        out_apk,
+        out_zip,
+        out_log,
+    ]
+    if out_config:
+        args.add("--resourcesConfigOutput", out_config)
+        output_files.append(out_config)
+
+    _java.run(
+        ctx = ctx,
+        executable = busybox,
+        tools = [aapt],
+        outputs = output_files,
+        inputs = input_files,
+        arguments = [args],
+        mnemonic = "ResourceShrinker",
+        progress_message =
+            "Shrinking resources for " + str(ctx.label),
+        host_javabase = host_javabase,
+        use_default_shell_env = True,
+    )
+
+def _optimize(
+        ctx,
+        out_apk,
+        in_apk,
+        resource_path_shortening_map = None,
+        resource_optimization_config = None,
+        aapt = None,
+        busybox = None,
+        host_javabase = None):
+    """Optimizes the resource apk including resource obfuscation, sparse encoding and path shortening.
+
+    Args:
+        ctx: The context.
+        out_apk: File. The output optimized resource ap_ package.
+        in_apk: File. The resource ap_ package to be optimized.
+        resource_path_shortening_map: File. The output path shortening map. Optional.
+        resource_optimization_config: File. The input optimization config. Optional.
+        aapt: FilesToRunProvider. The AAPT executable.
+        busybox: FilesToRunProvider. The ResourceBusyBox executable.
+        host_javabase: Target. The host javabase.
+    """
+
+    output_files = [out_apk]
+    input_files = [in_apk]
+
+    args = ctx.actions.args()
+    args.use_param_file("@%s")
+    args.add("--tool", "AAPT2_OPTIMIZE")
+    args.add("--")
+    args.add("--aapt2", aapt.executable)
+    args.add("--")
+    if resource_path_shortening_map:
+        args.add("--shorten-resource-paths")
+        args.add("--resource-path-shortening-map", resource_path_shortening_map)
+        output_files.append(resource_path_shortening_map)
+    if resource_optimization_config:
+        args.add("--collapse-resource-names")
+        args.add("--resources-config-path", resource_optimization_config)
+        input_files.append(resource_optimization_config)
+    args.add("-o", out_apk)
+    args.add(in_apk)
+
+    _java.run(
+        ctx = ctx,
+        host_javabase = host_javabase,
+        executable = busybox,
+        tools = [aapt],
+        arguments = [args],
+        inputs = input_files,
+        outputs = output_files,
+        mnemonic = "Aapt2Optimize",
+        progress_message =
+            "Optimizing Android resources for " + str(ctx.label),
+        use_default_shell_env = True,
+    )
+
 busybox = struct(
     compile = _compile,
     merge_compiled = _merge_compiled,
@@ -1042,6 +1196,8 @@ busybox = struct(
     process_databinding = _process_databinding,
     generate_binary_r = _generate_binary_r,
     make_aar = _make_aar,
+    shrink = _shrink,
+    optimize = _optimize,
 
     # Exposed for testing
     mergee_manifests_flag = _mergee_manifests_flag,
