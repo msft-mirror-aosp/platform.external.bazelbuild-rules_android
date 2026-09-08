@@ -18,8 +18,6 @@ import com.android.dex.FieldId;
 import com.android.dex.MethodId;
 import com.android.dex.ProtoId;
 import com.android.dex.TypeList;
-import com.google.common.collect.Interner;
-import com.google.common.collect.Interners;
 import com.google.common.collect.Sets;
 import java.util.Collections;
 import java.util.HashSet;
@@ -30,15 +28,35 @@ import java.util.HashSet;
  */
 class DexLimitTracker {
 
-  private static final ThreadLocal<Interner<String>> threadLocalInterner =
-      ThreadLocal.withInitial(Interners::newStrongInterner);
-
   /**
    * Upper bound for initial HashSet capacity. Avoids repeated resizing and rehashing cycles (from
    * the default capacity of 16) for typical multidex shards without prematurely allocating full
    * 64K-entry backing tables for smaller archives.
    */
   private static final int MAX_INITIAL_EXPECTED_SIZE = 8192;
+
+  /**
+   * Bounded direct-mapped array cache (lossy interner) to avoid WeakHashMap synchronization
+   * and WeakReference allocation overhead in persistent worker threads.
+   */
+  private static final class BoundedInterner {
+    private static final int CACHE_SIZE = 16384;
+    private static final int CACHE_MASK = CACHE_SIZE - 1;
+    private final String[] cache = new String[CACHE_SIZE];
+
+    String intern(String s) {
+      int hash = s.hashCode() & CACHE_MASK;
+      String existing = cache[hash];
+      if (existing != null && existing.equals(s)) {
+        return existing;
+      }
+      cache[hash] = s;
+      return s;
+    }
+  }
+
+  private static final ThreadLocal<BoundedInterner> threadLocalInterner =
+      ThreadLocal.withInitial(BoundedInterner::new);
 
   /**
    * Removes the thread-local interner instance for the current thread to prevent accumulation
@@ -128,10 +146,14 @@ class DexLimitTracker {
     }
   }
 
+  private static String intern(String s) {
+    return threadLocalInterner.get().intern(s);
+  }
+
   private static String getString(Dex dex, int stringIndex, String[] stringCache) {
     String s = stringCache[stringIndex];
     if (s == null) {
-      s = threadLocalInterner.get().intern(dex.strings().get(stringIndex));
+      s = intern(dex.strings().get(stringIndex));
       stringCache[stringIndex] = s;
     }
     return s;
@@ -143,7 +165,7 @@ class DexLimitTracker {
     String name = getString(dex, field.getNameIndex(), stringCache);
     String declaringClass = typeCache[field.getDeclaringClassIndex()];
     String type = typeCache[field.getTypeIndex()];
-    return threadLocalInterner.get().intern(declaringClass + "." + name + ":" + type);
+    return intern(declaringClass + "." + name + ":" + type);
   }
 
   private static String methodSignature(
@@ -158,8 +180,6 @@ class DexLimitTracker {
     for (short parameterTypeIndex : parameterTypeIndices.getTypes()) {
       parameterTypes.append(typeCache[parameterTypeIndex & 0xFFFF]);
     }
-    return threadLocalInterner
-        .get()
-        .intern(declaringClass + "." + name + "(" + parameterTypes + ")" + returnType);
+    return intern(declaringClass + "." + name + "(" + parameterTypes + ")" + returnType);
   }
 }
