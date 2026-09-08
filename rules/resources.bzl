@@ -788,7 +788,7 @@ def _package(
         aapt = aapt,
         busybox = busybox,
         host_javabase = host_javabase,
-        debug = compilation_mode != _compilation_mode.OPT,
+        debug = (compilation_mode != _compilation_mode.OPT) or ("hwasan" in ctx.features),
         should_throw_on_conflict = should_throw_on_conflict,
     )
 

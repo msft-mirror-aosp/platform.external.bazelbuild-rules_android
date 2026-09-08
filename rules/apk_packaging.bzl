@@ -238,6 +238,16 @@ def _build_apk(
             resources.append(native_lib)
             resource_paths.append(path)
 
+    if "hwasan" in ctx.features:
+        wrap_sh = ctx.actions.declare_file(ctx.label.name + "_hwasan_wrap.sh")
+        ctx.actions.write(
+            output = wrap_sh,
+            content = "#!/system/bin/sh\nLD_HWASAN=1 exec \"$@\"\n",
+            is_executable = True,
+        )
+        resources.append(wrap_sh)
+        resource_paths.append("%s:lib/arm64-v8a/wrap.sh" % wrap_sh.path)
+
     java.singlejar(
         ctx,
         inputs = inputs,
